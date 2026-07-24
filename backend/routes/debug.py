@@ -1,0 +1,15 @@
+from fastapi import APIRouter
+
+router = APIRouter()
+
+BACKEND_VERSION = "0.2.0"
+
+
+@router.get("/health")
+def health() -> dict:
+    return {"status": "backend healthy"}
+
+
+@router.get("/version")
+def version() -> dict:
+    return {"name": "PlaqueCheck Backend", "version": BACKEND_VERSION}
