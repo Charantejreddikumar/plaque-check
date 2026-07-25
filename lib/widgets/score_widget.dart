@@ -24,20 +24,20 @@ class GradientScoreCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF60A5FA).withValues(alpha: 0.96),
-            const Color(0xFF3B82F6).withValues(alpha: 0.96),
+            const Color(0xFF69C7C3).withValues(alpha: 0.96),
+            const Color(0xFF3BA7A4).withValues(alpha: 0.96),
           ],
         ),
         borderRadius: BorderRadius.circular(32),
         border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0EA5E9).withValues(alpha: 0.26),
+            color: const Color(0xFF2B7A78).withValues(alpha: 0.26),
             blurRadius: 42,
             offset: const Offset(0, 18),
           ),
           BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+            color: const Color(0xFF3BA7A4).withValues(alpha: 0.12),
             blurRadius: 34,
             offset: const Offset(0, 20),
           ),

@@ -93,7 +93,7 @@ class _SplashScreenState extends State<SplashScreen>
                     borderRadius: 34,
                     opacity: 0.14,
                     borderOpacity: 0.24,
-                    glowColor: const Color(0xFF0EA5E9),
+                    glowColor: const Color(0xFF2B7A78),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -102,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
                           height: 92,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
+                              colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
                             ),
                             borderRadius: BorderRadius.circular(28),
                             boxShadow: [

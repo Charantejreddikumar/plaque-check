@@ -27,7 +27,7 @@ class PreviewScreen extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.12),
                   ),
@@ -55,7 +55,7 @@ class PreviewScreen extends StatelessWidget {
                   borderRadius: 34,
                   opacity: 0.16,
                   borderOpacity: 0.24,
-                  glowColor: const Color(0xFF0EA5E9),
+                  glowColor: const Color(0xFF2B7A78),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -63,7 +63,7 @@ class PreviewScreen extends StatelessWidget {
                         children: [
                           const Icon(
                             Icons.image_search_outlined,
-                            color: Color(0xFF38BDF8),
+                            color: Color(0xFF69C7C3),
                             size: 18,
                           ),
                           const SizedBox(width: 8),

@@ -148,7 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   height: 48,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF38BDF8), Color(0xFF38BDF8)],
+                      colors: [Color(0xFF69C7C3), Color(0xFF69C7C3)],
                     ),
                     borderRadius: BorderRadius.circular(17),
                   ),
@@ -235,18 +235,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
+          colors: [Color(0xFF69C7C3), Color(0xFF3BA7A4)],
         ),
         borderRadius: BorderRadius.circular(34),
         border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0EA5E9).withValues(alpha: 0.26),
+            color: const Color(0xFF2B7A78).withValues(alpha: 0.26),
             blurRadius: 46,
             offset: const Offset(0, 18),
           ),
           BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+            color: const Color(0xFF3BA7A4).withValues(alpha: 0.12),
             blurRadius: 34,
             offset: const Offset(0, 22),
           ),
@@ -383,13 +383,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 22),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFDBEAFE), Color(0xFF60A5FA)],
+            colors: [Color(0xFFF5FBFC), Color(0xFF69C7C3)],
           ),
           borderRadius: BorderRadius.circular(30),
           border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF60A5FA).withValues(alpha: 0.22),
+              color: const Color(0xFF69C7C3).withValues(alpha: 0.22),
               blurRadius: 42,
               offset: const Offset(0, 18),
             ),
@@ -461,7 +461,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       borderRadius: 30,
       opacity: 0.14,
       borderOpacity: 0.24,
-      glowColor: const Color(0xFF0EA5E9),
+      glowColor: const Color(0xFF2B7A78),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -543,7 +543,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             decoration: BoxDecoration(
               gradient: isHighlight
                   ? const LinearGradient(
-                      colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
+                      colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                     )
@@ -574,7 +574,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GlassCard(
       opacity: 0.13,
       borderOpacity: 0.22,
-      glowColor: const Color(0xFF3B82F6),
+      glowColor: const Color(0xFF3BA7A4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -583,12 +583,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 42,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF3B82F6), Color(0xFF3B82F6)],
+                colors: [Color(0xFF3BA7A4), Color(0xFF3BA7A4)],
               ),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
             ),
-            child: const Icon(Icons.bolt, color: Color(0xFF38BDF8), size: 21),
+            child: const Icon(Icons.bolt, color: Color(0xFF69C7C3), size: 21),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -639,13 +639,13 @@ class _FloatingScanButton extends StatelessWidget {
         height: 64,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
+            colors: [Color(0xFF69C7C3), Color(0xFF3BA7A4)],
           ),
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0EA5E9).withValues(alpha: 0.34),
+              color: const Color(0xFF2B7A78).withValues(alpha: 0.34),
               blurRadius: 34,
               offset: const Offset(0, 12),
             ),

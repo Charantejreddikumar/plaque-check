@@ -14,35 +14,50 @@ class ScanScreen extends StatefulWidget {
 class _ScanScreenState extends State<ScanScreen> {
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _captureImage() async {
     try {
       final image = await _picker.pickImage(
-        source: source,
+        source: ImageSource.camera,
         imageQuality: 88,
         maxWidth: 1600,
       );
-
-      if (image == null || !mounted) {
-        return;
-      }
-
-      Navigator.pushNamed(context, '/preview', arguments: image);
+      _openPreview(image);
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF0EA5E9),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          content: const Text('Camera is not available on this device yet.'),
-        ),
+      _showPickerMessage(
+        'Camera is not available on this device or browser. Please allow camera access and try again.',
       );
     }
+  }
+
+  Future<void> _selectFromGallery() async {
+    try {
+      final image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 88,
+        maxWidth: 1600,
+      );
+      _openPreview(image);
+    } catch (_) {
+      _showPickerMessage('Gallery is not available on this device yet.');
+    }
+  }
+
+  void _openPreview(XFile? image) {
+    if (image == null || !mounted) {
+      return;
+    }
+
+    Navigator.pushNamed(context, '/preview', arguments: image);
+  }
+
+  void _showPickerMessage(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(behavior: SnackBarBehavior.floating, content: Text(message)),
+    );
   }
 
   @override
@@ -58,17 +73,17 @@ class _ScanScreenState extends State<ScanScreen> {
           ),
           const SizedBox(height: 28),
           _ScanActionCard(
-            icon: Icons.upload_file_outlined,
-            title: 'Upload Image',
-            subtitle: 'Select a dental photo from your gallery.',
-            onTap: () => _pickImage(ImageSource.gallery),
+            icon: Icons.camera_alt_outlined,
+            title: 'Capture Image',
+            subtitle: 'Open camera capture for a fresh scan.',
+            onTap: _captureImage,
           ),
           const SizedBox(height: 18),
           _ScanActionCard(
-            icon: Icons.camera_alt_outlined,
-            title: 'Capture Camera',
-            subtitle: 'Open camera capture for a fresh scan.',
-            onTap: () => _pickImage(ImageSource.camera),
+            icon: Icons.photo_library_outlined,
+            title: 'Gallery',
+            subtitle: 'Select an existing dental photo.',
+            onTap: _selectFromGallery,
           ),
         ],
       ),
@@ -93,29 +108,17 @@ class _ScanActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassCard(
       onTap: onTap,
-      borderRadius: 30,
-      opacity: 0.14,
-      borderOpacity: 0.22,
-      glowColor: const Color(0xFF0EA5E9),
+      borderRadius: 16,
       child: Row(
         children: [
           Container(
-            width: 68,
-            height: 68,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
-              ),
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0EA5E9).withValues(alpha: 0.18),
-                  blurRadius: 22,
-                  offset: const Offset(0, 9),
-                ),
-              ],
+              color: AppTheme.secondarySurface(context),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: Colors.white, size: 30),
+            child: Icon(icon, color: AppTheme.highlight(context), size: 27),
           ),
           const SizedBox(width: 18),
           Expanded(
@@ -142,7 +145,7 @@ class _ScanActionCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: Color(0xFF0EA5E9)),
+          Icon(Icons.chevron_right, color: AppTheme.highlight(context)),
         ],
       ),
     );
@@ -188,9 +191,9 @@ class _Header extends StatelessWidget {
         if (onBack != null)
           IconButton(
             onPressed: onBack,
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+            icon: Icon(Icons.arrow_back, color: AppTheme.highlight(context)),
             style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.12),
+              backgroundColor: AppTheme.secondarySurface(context),
             ),
           ),
         if (onBack != null) const SizedBox(height: 16),

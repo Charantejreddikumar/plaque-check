@@ -86,7 +86,7 @@ class _DeveloperSettingsScreenState extends State<DeveloperSettingsScreen> {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.16),
                   ),
@@ -115,7 +115,7 @@ class _DeveloperSettingsScreenState extends State<DeveloperSettingsScreen> {
                   borderRadius: 26,
                   opacity: 0.14,
                   borderOpacity: 0.22,
-                  glowColor: const Color(0xFF0EA5E9),
+                  glowColor: const Color(0xFF2B7A78),
                   child: Row(
                     children: [
                       Icon(
@@ -206,7 +206,7 @@ class _DeveloperSettingsScreenState extends State<DeveloperSettingsScreen> {
 InputDecoration _inputDecoration(String label, IconData icon) {
   return InputDecoration(
     labelText: label,
-    prefixIcon: Icon(icon, color: const Color(0xFF0EA5E9)),
+    prefixIcon: Icon(icon, color: const Color(0xFF2B7A78)),
     filled: true,
     fillColor: Colors.white.withValues(alpha: 0.1),
     errorMaxLines: 2,
@@ -224,7 +224,7 @@ InputDecoration _inputDecoration(String label, IconData icon) {
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.4),
+      borderSide: const BorderSide(color: Color(0xFF2B7A78), width: 1.4),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
@@ -262,7 +262,7 @@ String? _validatePort(String? value) {
 SnackBar _settingsSnackBar(String message) {
   return SnackBar(
     behavior: SnackBarBehavior.floating,
-    backgroundColor: const Color(0xFF3B82F6),
+    backgroundColor: const Color(0xFF3BA7A4),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     content: Text(message),
   );

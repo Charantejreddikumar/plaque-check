@@ -350,7 +350,7 @@ class _SettingsPage extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.16),
                   ),

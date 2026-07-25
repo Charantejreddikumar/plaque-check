@@ -24,17 +24,27 @@ class AuthService {
     required String password,
   }) async {
     final url = Uri.parse('$_baseUrl/register');
-    debugPrint('REGISTER URL: $url');
+    final payload = {
+      'name': name.trim(),
+      'email': email.trim().toLowerCase(),
+      'password': password,
+    };
 
-    final response = await _client.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name.trim(),
-        'email': email.trim().toLowerCase(),
-        'password': password,
-      }),
-    );
+    debugPrint('REGISTER URL: $url');
+    debugPrint('REGISTER REQUEST BODY: ${jsonEncode(payload)}');
+
+    late final http.Response response;
+    try {
+      response = await _client.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+    } catch (error, stack) {
+      debugPrint('REGISTER EXCEPTION: $error');
+      debugPrint(stack.toString());
+      throw const AuthException('Unable to reach the backend.');
+    }
 
     debugPrint('REGISTER RESPONSE ${response.statusCode}: ${response.body}');
 
@@ -96,7 +106,23 @@ class AuthService {
 
   String _errorMessage(Map<String, dynamic> body, String fallback) {
     final detail = body['detail'];
-    return detail is String && detail.isNotEmpty ? detail : fallback;
+    if (detail is String && detail.isNotEmpty) {
+      return detail;
+    }
+    if (detail is List && detail.isNotEmpty) {
+      return detail.map(_formatErrorDetail).join('\n');
+    }
+    return fallback;
+  }
+
+  String _formatErrorDetail(Object? detail) {
+    if (detail is Map<String, dynamic>) {
+      final message = detail['msg'];
+      if (message is String && message.isNotEmpty) {
+        return message;
+      }
+    }
+    return detail.toString();
   }
 }
 

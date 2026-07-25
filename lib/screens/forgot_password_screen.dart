@@ -62,7 +62,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             borderRadius: 32,
             opacity: 0.14,
             borderOpacity: 0.22,
-            glowColor: const Color(0xFF0EA5E9),
+            glowColor: const Color(0xFF2B7A78),
             child: Form(
               key: _formKey,
               child: Column(
@@ -80,12 +80,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       opacity: 0.12,
                       borderOpacity: 0.2,
                       padding: const EdgeInsets.all(16),
-                      glowColor: const Color(0xFF3B82F6),
+                      glowColor: const Color(0xFF3BA7A4),
                       child: const Row(
                         children: [
                           Icon(
                             Icons.check_circle_outline,
-                            color: Color(0xFF38BDF8),
+                            color: Color(0xFF69C7C3),
                             size: 22,
                           ),
                           SizedBox(width: 12),
@@ -159,7 +159,7 @@ class _BackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
-      icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+      icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
       style: IconButton.styleFrom(
         backgroundColor: Colors.white.withValues(alpha: 0.12),
       ),
@@ -170,7 +170,7 @@ class _BackButton extends StatelessWidget {
 InputDecoration _inputDecoration(String label, IconData icon) {
   return InputDecoration(
     labelText: label,
-    prefixIcon: Icon(icon, color: const Color(0xFF0EA5E9)),
+    prefixIcon: Icon(icon, color: const Color(0xFF2B7A78)),
     filled: true,
     fillColor: Colors.white.withValues(alpha: 0.1),
     errorStyle: const TextStyle(
@@ -187,7 +187,7 @@ InputDecoration _inputDecoration(String label, IconData icon) {
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.4),
+      borderSide: const BorderSide(color: Color(0xFF2B7A78), width: 1.4),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
@@ -203,7 +203,7 @@ InputDecoration _inputDecoration(String label, IconData icon) {
 SnackBar _authSnackBar(String message) {
   return SnackBar(
     behavior: SnackBarBehavior.floating,
-    backgroundColor: const Color(0xFF3B82F6),
+    backgroundColor: const Color(0xFF3BA7A4),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     content: Text(message),
   );

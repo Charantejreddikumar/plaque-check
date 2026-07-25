@@ -60,7 +60,7 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.16),
                   ),
@@ -164,7 +164,7 @@ class _ComparisonImage extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.10),
                       child: const Icon(
                         Icons.document_scanner_outlined,
-                        color: Color(0xFF38BDF8),
+                        color: Color(0xFF69C7C3),
                         size: 34,
                       ),
                     ),
@@ -218,7 +218,7 @@ class _ComparisonSummary extends StatelessWidget {
       borderRadius: 30,
       opacity: 0.15,
       borderOpacity: 0.24,
-      glowColor: const Color(0xFF0EA5E9),
+      glowColor: const Color(0xFF2B7A78),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

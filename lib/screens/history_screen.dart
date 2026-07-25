@@ -65,7 +65,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF38BDF8)),
+                  child: CircularProgressIndicator(color: Color(0xFF69C7C3)),
                 );
               }
 
@@ -74,12 +74,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   borderRadius: 30,
                   opacity: 0.14,
                   borderOpacity: 0.22,
-                  glowColor: const Color(0xFF0EA5E9),
+                  glowColor: const Color(0xFF2B7A78),
                   child: const Column(
                     children: [
                       Icon(
                         Icons.folder_open_outlined,
-                        color: Color(0xFF38BDF8),
+                        color: Color(0xFF69C7C3),
                         size: 44,
                       ),
                       SizedBox(height: 12),
@@ -142,7 +142,7 @@ class _HistoryCard extends StatelessWidget {
       borderRadius: 30,
       opacity: 0.14,
       borderOpacity: 0.22,
-      glowColor: const Color(0xFF0EA5E9),
+      glowColor: const Color(0xFF2B7A78),
       onTap: onTap,
       child: Row(
         children: [
@@ -207,7 +207,7 @@ class ReportDetailScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF3B82F6),
+          backgroundColor: const Color(0xFF3BA7A4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -259,7 +259,7 @@ class ReportDetailScreen extends StatelessWidget {
             borderRadius: 30,
             opacity: 0.15,
             borderOpacity: 0.24,
-            glowColor: const Color(0xFF0EA5E9),
+            glowColor: const Color(0xFF2B7A78),
             child: Column(
               children: [
                 _ReportDetailRow(
@@ -288,7 +288,7 @@ class ReportDetailScreen extends StatelessWidget {
             borderRadius: 30,
             opacity: 0.14,
             borderOpacity: 0.22,
-            glowColor: const Color(0xFF3B82F6),
+            glowColor: const Color(0xFF3BA7A4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -363,7 +363,7 @@ class _ReportImage extends StatelessWidget {
                   ? buildPlatformImage(imagePath: imageUrl, fit: BoxFit.cover)
                   : const Icon(
                       Icons.image_not_supported_outlined,
-                      color: Color(0xFF38BDF8),
+                      color: Color(0xFF69C7C3),
                       size: 42,
                     ),
             ),
@@ -449,7 +449,7 @@ class _Thumbnail extends StatelessWidget {
             ? buildPlatformImage(imagePath: imageUrl, fit: BoxFit.cover)
             : const Icon(
                 Icons.document_scanner_outlined,
-                color: Color(0xFF38BDF8),
+                color: Color(0xFF69C7C3),
               ),
       ),
     );
@@ -554,7 +554,7 @@ class _BackHeader extends StatelessWidget {
         if (onBack != null)
           IconButton(
             onPressed: onBack,
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
             style: IconButton.styleFrom(
               backgroundColor: Colors.white.withValues(alpha: 0.12),
             ),

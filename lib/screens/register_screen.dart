@@ -56,13 +56,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(_authSnackBar(error.message));
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        _authSnackBar('Unable to create account. Please try again.'),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(_authSnackBar('$error'));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -101,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             borderRadius: 32,
             opacity: 0.14,
             borderOpacity: 0.22,
-            glowColor: const Color(0xFF0EA5E9),
+            glowColor: const Color(0xFF2B7A78),
             child: Form(
               key: _formKey,
               child: Column(
@@ -138,7 +136,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _obscurePassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
-                          color: const Color(0xFF38BDF8),
+                          color: const Color(0xFF69C7C3),
                         ),
                       ),
                     ),
@@ -161,7 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _obscureConfirmPassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
-                          color: const Color(0xFF38BDF8),
+                          color: const Color(0xFF69C7C3),
                         ),
                       ),
                     ),
@@ -231,7 +229,7 @@ class _BackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
-      icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+      icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
       style: IconButton.styleFrom(
         backgroundColor: Colors.white.withValues(alpha: 0.12),
       ),
@@ -246,7 +244,7 @@ InputDecoration _inputDecoration(
 }) {
   return InputDecoration(
     labelText: label,
-    prefixIcon: Icon(icon, color: const Color(0xFF0EA5E9)),
+    prefixIcon: Icon(icon, color: const Color(0xFF2B7A78)),
     suffixIcon: suffixIcon,
     filled: true,
     fillColor: Colors.white.withValues(alpha: 0.1),
@@ -265,7 +263,7 @@ InputDecoration _inputDecoration(
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.4),
+      borderSide: const BorderSide(color: Color(0xFF2B7A78), width: 1.4),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
@@ -281,7 +279,7 @@ InputDecoration _inputDecoration(
 SnackBar _authSnackBar(String message) {
   return SnackBar(
     behavior: SnackBarBehavior.floating,
-    backgroundColor: const Color(0xFF3B82F6),
+    backgroundColor: const Color(0xFF3BA7A4),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     content: Text(message),
   );

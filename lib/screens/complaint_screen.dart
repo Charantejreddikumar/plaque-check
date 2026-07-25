@@ -82,7 +82,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.16),
                   ),
@@ -178,7 +178,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
 InputDecoration _inputDecoration(String label, IconData icon) {
   return InputDecoration(
     labelText: label,
-    prefixIcon: Icon(icon, color: const Color(0xFF0EA5E9)),
+    prefixIcon: Icon(icon, color: const Color(0xFF2B7A78)),
     filled: true,
     fillColor: Colors.white.withValues(alpha: 0.12),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
@@ -188,7 +188,7 @@ InputDecoration _inputDecoration(String label, IconData icon) {
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.4),
+      borderSide: const BorderSide(color: Color(0xFF2B7A78), width: 1.4),
     ),
   );
 }

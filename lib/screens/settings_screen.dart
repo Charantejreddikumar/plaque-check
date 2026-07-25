@@ -26,7 +26,7 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.16),
                   ),
@@ -141,7 +141,7 @@ class _BackendStatusCard extends StatelessWidget {
           borderOpacity: 0.22,
           glowColor: connected
               ? const Color(0xFF34D399)
-              : const Color(0xFF0EA5E9),
+              : const Color(0xFF2B7A78),
           child: Row(
             children: [
               Container(
@@ -274,7 +274,7 @@ class _ThemeChoice extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: selected
                 ? const LinearGradient(
-                    colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
+                    colors: [Color(0xFF69C7C3), Color(0xFF3BA7A4)],
                   )
                 : null,
             color: selected ? null : Colors.white.withValues(alpha: 0.10),

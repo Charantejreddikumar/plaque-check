@@ -95,7 +95,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF3B82F6),
+          backgroundColor: const Color(0xFF3BA7A4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -134,7 +134,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                     borderRadius: 36,
                     opacity: 0.16,
                     borderOpacity: 0.26,
-                    glowColor: const Color(0xFF0EA5E9).withValues(alpha: pulse),
+                    glowColor: const Color(0xFF2B7A78).withValues(alpha: pulse),
                     child: child!,
                   );
                 },
@@ -179,7 +179,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                                 alpha: 0.12,
                               ),
                               valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF38BDF8),
+                                Color(0xFF69C7C3),
                               ),
                             ),
                           ),
@@ -189,7 +189,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                           children: [
                             const Icon(
                               Icons.memory,
-                              color: Color(0xFF38BDF8),
+                              color: Color(0xFF69C7C3),
                               size: 26,
                             ),
                             const SizedBox(height: 4),
@@ -262,14 +262,14 @@ class _StageTimeline extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               gradient: isActive
                   ? const LinearGradient(
-                      colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
+                      colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
                     )
                   : null,
               color: isActive ? null : Colors.white.withValues(alpha: 0.12),
               boxShadow: isActive
                   ? [
                       BoxShadow(
-                        color: const Color(0xFF0EA5E9).withValues(alpha: 0.24),
+                        color: const Color(0xFF2B7A78).withValues(alpha: 0.24),
                         blurRadius: 14,
                       ),
                     ]

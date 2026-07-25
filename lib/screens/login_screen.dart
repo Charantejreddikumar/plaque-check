@@ -94,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: 32,
             opacity: 0.14,
             borderOpacity: 0.22,
-            glowColor: const Color(0xFF0EA5E9),
+            glowColor: const Color(0xFF2B7A78),
             child: Form(
               key: _formKey,
               child: Column(
@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           _obscurePassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
-                          color: const Color(0xFF38BDF8),
+                          color: const Color(0xFF69C7C3),
                         ),
                       ),
                     ),
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Checkbox(
                         value: _rememberSession,
-                        activeColor: const Color(0xFF3B82F6),
+                        activeColor: const Color(0xFF3BA7A4),
                         onChanged: (value) {
                           setState(() => _rememberSession = value ?? false);
                         },
@@ -232,12 +232,12 @@ class _AuthLogo extends StatelessWidget {
         height: 74,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
+            colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0EA5E9).withValues(alpha: 0.18),
+              color: const Color(0xFF2B7A78).withValues(alpha: 0.18),
               blurRadius: 28,
               offset: const Offset(0, 12),
             ),
@@ -266,7 +266,7 @@ class _AuthTextButton extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: Color(0xFF38BDF8),
+          color: Color(0xFF69C7C3),
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -281,7 +281,7 @@ InputDecoration _inputDecoration(
 }) {
   return InputDecoration(
     labelText: label,
-    prefixIcon: Icon(icon, color: const Color(0xFF0EA5E9)),
+    prefixIcon: Icon(icon, color: const Color(0xFF2B7A78)),
     suffixIcon: suffixIcon,
     filled: true,
     fillColor: Colors.white.withValues(alpha: 0.1),
@@ -300,7 +300,7 @@ InputDecoration _inputDecoration(
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.4),
+      borderSide: const BorderSide(color: Color(0xFF2B7A78), width: 1.4),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
@@ -335,7 +335,7 @@ String? _validateRequiredPassword(String? value) {
 SnackBar _authSnackBar(String message) {
   return SnackBar(
     behavior: SnackBarBehavior.floating,
-    backgroundColor: const Color(0xFF3B82F6),
+    backgroundColor: const Color(0xFF3BA7A4),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     content: Text(message),
   );

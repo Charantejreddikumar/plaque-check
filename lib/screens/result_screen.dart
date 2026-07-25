@@ -43,7 +43,7 @@ class ResultScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF3B82F6),
+        backgroundColor: const Color(0xFF3BA7A4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         content: const Text('AI diagnostic report saved to history.'),
       ),
@@ -74,7 +74,7 @@ class ResultScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF3B82F6),
+          backgroundColor: const Color(0xFF3BA7A4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -185,7 +185,7 @@ class ResultScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF3B82F6),
+        backgroundColor: const Color(0xFF3BA7A4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         content: Text(
           '$feature will be connected with backend services later.',
@@ -214,7 +214,7 @@ class _ResultImagePreview extends StatelessWidget {
       borderRadius: 32,
       opacity: 0.16,
       borderOpacity: 0.24,
-      glowColor: const Color(0xFF0EA5E9),
+      glowColor: const Color(0xFF2B7A78),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(26),
         child: Container(
@@ -284,8 +284,8 @@ class _HeatmapPlaceholder extends StatelessWidget {
             shape: BoxShape.circle,
             gradient: RadialGradient(
               colors: [
-                const Color(0xFF0EA5E9).withValues(alpha: 0.42),
-                const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                const Color(0xFF2B7A78).withValues(alpha: 0.42),
+                const Color(0xFF3BA7A4).withValues(alpha: 0.08),
                 Colors.transparent,
               ],
             ),
@@ -295,7 +295,7 @@ class _HeatmapPlaceholder extends StatelessWidget {
           top: 52,
           child: Icon(
             Icons.blur_on,
-            color: const Color(0xFF38BDF8).withValues(alpha: 0.9),
+            color: const Color(0xFF69C7C3).withValues(alpha: 0.9),
             size: 70,
           ),
         ),
@@ -331,7 +331,7 @@ class _ReportHeroCard extends StatelessWidget {
       borderRadius: 34,
       opacity: 0.16,
       borderOpacity: 0.24,
-      glowColor: const Color(0xFF0EA5E9),
+      glowColor: const Color(0xFF2B7A78),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -409,7 +409,7 @@ class _CircularScore extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0EA5E9).withValues(alpha: 0.26),
+                color: const Color(0xFF2B7A78).withValues(alpha: 0.26),
                 blurRadius: 34,
               ),
             ],
@@ -422,7 +422,7 @@ class _CircularScore extends StatelessWidget {
             value: progress,
             strokeWidth: 9,
             backgroundColor: Colors.white.withValues(alpha: 0.12),
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF69C7C3)),
           ),
         ),
         Column(
@@ -467,7 +467,7 @@ class _ClinicalSummaryCard extends StatelessWidget {
       borderRadius: 30,
       opacity: 0.14,
       borderOpacity: 0.22,
-      glowColor: const Color(0xFF3B82F6),
+      glowColor: const Color(0xFF3BA7A4),
       child: Column(
         children: [
           _MetricRow(
@@ -508,7 +508,7 @@ class _MetricRow extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
+              colors: [Color(0xFF69C7C3), Color(0xFF3BA7A4)],
             ),
             borderRadius: BorderRadius.circular(15),
           ),
@@ -625,7 +625,7 @@ class _BackHeader extends StatelessWidget {
         if (onBack != null)
           IconButton(
             onPressed: onBack,
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
             style: IconButton.styleFrom(
               backgroundColor: Colors.white.withValues(alpha: 0.12),
             ),

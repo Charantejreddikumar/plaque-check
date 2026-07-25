@@ -57,6 +57,13 @@ def register(payload: RegisterRequest) -> dict:
             status_code=400,
             detail="Email already registered",
         ) from exc
+    except Exception as exc:
+        logger.exception("Registration failed unexpectedly for %s.", email)
+        print("FAIL")
+        raise HTTPException(
+            status_code=500,
+            detail="Registration failed. Please try again.",
+        ) from exc
 
     logger.info("Registration success: %s.", email)
     print("SUCCESS")

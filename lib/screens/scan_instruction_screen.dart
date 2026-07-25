@@ -23,7 +23,7 @@ class ScanInstructionScreen extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.16),
                   ),
@@ -100,7 +100,7 @@ class _ScannerIllustration extends StatelessWidget {
       borderRadius: 34,
       opacity: 0.18,
       borderOpacity: 0.24,
-      glowColor: const Color(0xFF60A5FA),
+      glowColor: const Color(0xFF69C7C3),
       child: SizedBox(
         height: 190,
         child: Stack(
@@ -113,8 +113,8 @@ class _ScannerIllustration extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF60A5FA).withValues(alpha: 0.34),
-                    const Color(0xFF38BDF8).withValues(alpha: 0.08),
+                    const Color(0xFF69C7C3).withValues(alpha: 0.34),
+                    const Color(0xFF69C7C3).withValues(alpha: 0.08),
                     Colors.transparent,
                   ],
                 ),
@@ -130,7 +130,7 @@ class _ScannerIllustration extends StatelessWidget {
               ),
               child: const Icon(
                 Icons.document_scanner_outlined,
-                color: Color(0xFF0EA5E9),
+                color: Color(0xFF2B7A78),
                 size: 58,
               ),
             ),
@@ -144,7 +144,7 @@ class _ScannerIllustration extends StatelessWidget {
                   gradient: const LinearGradient(
                     colors: [
                       Color(0x000EA5E9),
-                      Color(0xFF0EA5E9),
+                      Color(0xFF2B7A78),
                       Color(0x000EA5E9),
                     ],
                   ),

@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/api_service.dart';
+import '../services/plaque_prediction.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
@@ -13,8 +17,27 @@ class ProfileScreen extends StatelessWidget {
   Future<SessionUser?> _user() => SessionManager.currentUser();
 
   Future<int> _scanCount() async {
+    try {
+      final backendReports = await ApiService().fetchReports();
+      if (backendReports.isNotEmpty) {
+        return backendReports.length;
+      }
+    } catch (_) {
+      // Local reports keep profile counts available when the backend is offline.
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('scan_reports')?.length ?? 0;
+    final values = prefs.getStringList('scan_reports') ?? [];
+    return values
+        .map((value) {
+          try {
+            return ScanReport.fromLocalJson(jsonDecode(value));
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<ScanReport>()
+        .length;
   }
 
   @override
@@ -33,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0EA5E9)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2B7A78)),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.12),
                   ),
@@ -198,12 +221,12 @@ class _ProfileIdentity extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF38BDF8), Color(0xFF38BDF8)],
+                    colors: [Color(0xFF69C7C3), Color(0xFF69C7C3)],
                   ),
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF0EA5E9).withValues(alpha: 0.16),
+                      color: const Color(0xFF2B7A78).withValues(alpha: 0.16),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
                     ),
@@ -282,7 +305,7 @@ class _SettingsRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF0EA5E9), size: 22),
+            Icon(icon, color: const Color(0xFF2B7A78), size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
@@ -387,7 +410,7 @@ class _ThemeChoice extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: selected
                 ? const LinearGradient(
-                    colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
+                    colors: [Color(0xFF69C7C3), Color(0xFF3BA7A4)],
                   )
                 : null,
             color: selected ? null : Colors.white.withValues(alpha: 0.08),
