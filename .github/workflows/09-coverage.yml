@@ -29,10 +29,13 @@ jobs:
           flutter test --coverage
 
       - name: Python Coverage
+        env:
+          PYTHONPATH: .
         run: |
           cd backend
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov httpx requests opencv-python-headless numpy passlib bcrypt
+          pip install pytest pytest-cov httpx requests opencv-python-headless numpy passlib "bcrypt==3.2.2"
           pytest --cov=. --cov-report=xml:coverage.xml --cov-report=html:htmlcov
 
       - name: Upload All Coverage Reports
