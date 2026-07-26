@@ -15,14 +15,25 @@ class OpenCVAnalyzer(Analyzer):
         if image is None:
             raise ValueError("Please upload a clear image showing human teeth.")
 
-        # Perform strict teeth image validation
+        # 1. Perform strict teeth image validation
         validate_teeth_image(image)
 
         resized = _resize_for_analysis(image)
-        hsv = cv2.cvtColor(resized, cv2.COLOR_BGR2HSV)
 
+        # 2. Contrast Limited Adaptive Histogram Equalization (CLAHE) in CIELAB
+        lab = cv2.cvtColor(resized, cv2.COLOR_BGR2LAB)
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+        lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+        enhanced_bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+        hsv = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2HSV)
+
+        # 3. Tooth & Oral Mucosa Masking
         tooth_mask = _estimate_tooth_regions(hsv)
-        plaque_mask = _estimate_plaque_regions(hsv, tooth_mask)
+        gum_mask = _estimate_gum_regions(hsv)
+
+        # 4. Plaque biofilm detection using CIELAB b* + HSV saturation + Gum Proximity
+        plaque_mask = _estimate_plaque_regions_hybrid(lab, hsv, tooth_mask, gum_mask)
         overlay_path = _save_visual_outputs(image_path, resized, plaque_mask)
 
         tooth_pixels = int(cv2.countNonZero(tooth_mask))
@@ -64,6 +75,7 @@ def _resize_for_analysis(image: np.ndarray) -> np.ndarray:
 
 
 def _estimate_tooth_regions(hsv: np.ndarray) -> np.ndarray:
+    # Teeth enamel: Bright, low-to-moderate saturation
     lower = np.array([0, 0, 105], dtype=np.uint8)
     upper = np.array([179, 95, 255], dtype=np.uint8)
     mask = cv2.inRange(hsv, lower, upper)
@@ -72,17 +84,46 @@ def _estimate_tooth_regions(hsv: np.ndarray) -> np.ndarray:
     return cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
 
-def _estimate_plaque_regions(hsv: np.ndarray, tooth_mask: np.ndarray) -> np.ndarray:
-    # Plaque biofilm color: yellow/orange hue with distinct saturation (>=55)
-    yellow_lower = np.array([14, 55, 80], dtype=np.uint8)
+def _estimate_gum_regions(hsv: np.ndarray) -> np.ndarray:
+    # Pink/Red oral mucosa / gum region
+    gum_1 = cv2.inRange(hsv, np.array([0, 50, 40]), np.array([16, 255, 255]))
+    gum_2 = cv2.inRange(hsv, np.array([155, 50, 40]), np.array([180, 255, 255]))
+    gum_mask = cv2.bitwise_or(gum_1, gum_2)
+    kernel = np.ones((9, 9), np.uint8)
+    return cv2.morphologyEx(gum_mask, cv2.MORPH_CLOSE, kernel)
+
+
+def _estimate_plaque_regions_hybrid(
+    lab: np.ndarray,
+    hsv: np.ndarray,
+    tooth_mask: np.ndarray,
+    gum_mask: np.ndarray,
+) -> np.ndarray:
+    # 1. CIELAB b* channel yellowing threshold (b* > 138 in OpenCV 8-bit scale)
+    b_channel = lab[:, :, 2]
+    lab_yellow_mask = cv2.inRange(b_channel, 138, 255)
+
+    # 2. HSV Biofilm color range (Yellow/Orange hue 14-40, saturation >= 55)
+    yellow_lower = np.array([14, 55, 75], dtype=np.uint8)
     yellow_upper = np.array([40, 255, 255], dtype=np.uint8)
-    plaque_color = cv2.inRange(hsv, yellow_lower, yellow_upper)
+    hsv_yellow_mask = cv2.inRange(hsv, yellow_lower, yellow_upper)
 
-    saturation = hsv[:, :, 1]
-    sat_mask = cv2.inRange(saturation, 55, 255)
+    # Combine color evidence
+    combined_color = cv2.bitwise_and(lab_yellow_mask, hsv_yellow_mask)
 
-    plaque_mask = cv2.bitwise_and(plaque_color, sat_mask)
-    plaque_mask = cv2.bitwise_and(plaque_mask, tooth_mask)
+    # 3. Gingival Margin Proximity (plaque accumulates near gumline / interdental edges)
+    dilated_gum = cv2.dilate(gum_mask, np.ones((25, 25), np.uint8))
+    
+    # Interdental edges using Laplacian on teeth
+    edges = cv2.Canny(hsv[:, :, 2], 50, 150)
+    dilated_edges = cv2.dilate(edges, np.ones((7, 7), np.uint8))
+
+    proximity_mask = cv2.bitwise_or(dilated_gum, dilated_edges)
+
+    # Plaque must be on teeth AND (near gumline OR along interdental edges)
+    plaque_mask = cv2.bitwise_and(combined_color, tooth_mask)
+    plaque_mask = cv2.bitwise_and(plaque_mask, proximity_mask)
+
     kernel = np.ones((5, 5), np.uint8)
     return cv2.morphologyEx(plaque_mask, cv2.MORPH_OPEN, kernel)
 
