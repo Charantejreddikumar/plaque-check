@@ -26,54 +26,48 @@ def validate_teeth_image(image: np.ndarray) -> None:
         raise ValueError("Please upload a clear image showing human teeth.")
 
     # Overexposed clipped pixels check (>250)
-    overexposed_ratio = np.count_nonzero(gray > 250) / (height * width)
+    total_pixels = height * width
+    overexposed_ratio = np.count_nonzero(gray > 250) / total_pixels
     if overexposed_ratio > 0.45:
         raise ValueError("Please upload a clear image showing human teeth.")
 
-    # 3. Color & Structural Feature Analysis (Teeth + Oral Mucosa / Gum region)
+    # 3. Color & Structural Feature Analysis (Teeth Enamel + Oral Mucosa / Gum region)
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    hue = hsv[:, :, 0]
-    sat = hsv[:, :, 1]
-    val = hsv[:, :, 2]
 
-    # Tooth region mask: Bright, low-to-moderate saturation
-    tooth_lower = np.array([0, 0, 105], dtype=np.uint8)
-    tooth_upper = np.array([179, 95, 255], dtype=np.uint8)
+    # Tooth enamel region mask: Off-white/cream/neutral tones with low-to-moderate saturation
+    tooth_lower = np.array([0, 0, 110], dtype=np.uint8)
+    tooth_upper = np.array([179, 75, 255], dtype=np.uint8)
     tooth_mask = cv2.inRange(hsv, tooth_lower, tooth_upper)
-
-    total_pixels = height * width
     tooth_pixels = cv2.countNonZero(tooth_mask)
     tooth_ratio = tooth_pixels / total_pixels
 
-    # Teeth must occupy a reasonable portion of the photo (between 5% and 80%)
-    if tooth_ratio < 0.05 or tooth_ratio > 0.85:
-        raise ValueError("Please upload a clear image showing human teeth.")
-
     # Check for oral mucosa / gum / lip presence (pink/red tones bordering teeth)
-    # Red/Pink Hue range in HSV: 0-15 and 155-180 with moderate-to-high saturation
-    gum_mask_1 = cv2.inRange(hsv, np.array([0, 50, 40]), np.array([16, 255, 255]))
-    gum_mask_2 = cv2.inRange(hsv, np.array([155, 50, 40]), np.array([180, 255, 255]))
+    gum_mask_1 = cv2.inRange(hsv, np.array([0, 45, 40]), np.array([18, 255, 255]))
+    gum_mask_2 = cv2.inRange(hsv, np.array([150, 45, 40]), np.array([180, 255, 255]))
     gum_mask = cv2.bitwise_or(gum_mask_1, gum_mask_2)
     gum_pixels = cv2.countNonZero(gum_mask)
     gum_ratio = gum_pixels / total_pixels
 
-    # Non-teeth images (e.g. paper documents, solid objects, landscapes, blue sky/foliage, pets)
-    # will lack the oral environment combination (teeth structure + oral tissue/gums or high contrast oral cavity).
-    # Check green/blue landscape foliage:
-    green_blue_mask = cv2.inRange(hsv, np.array([35, 40, 40]), np.array([140, 255, 255]))
+    # Check green/blue landscape / non-oral background:
+    green_blue_mask = cv2.inRange(hsv, np.array([35, 30, 30]), np.array([140, 255, 255]))
     green_blue_ratio = cv2.countNonZero(green_blue_mask) / total_pixels
-    if green_blue_ratio > 0.40:
+    if green_blue_ratio > 0.35:
         raise ValueError("Please upload a clear image showing human teeth.")
 
-    # Check document / text paper characteristic: extremely high white background (>85%) with dark text edges
-    white_background_mask = cv2.inRange(hsv, np.array([0, 0, 180]), np.array([179, 30, 255]))
+    # Check document / text paper characteristic: high white background with dark text lines
+    white_background_mask = cv2.inRange(hsv, np.array([0, 0, 180]), np.array([179, 25, 255]))
     white_ratio = cv2.countNonZero(white_background_mask) / total_pixels
-    edges = cv2.Canny(gray, 100, 200)
-    edge_ratio = cv2.countNonZero(edges) / total_pixels
 
-    if white_ratio > 0.82 and gum_ratio < 0.02:
+    if white_ratio > 0.75 and gum_ratio < 0.02:
         raise ValueError("Please upload a clear image showing human teeth.")
 
-    # Final check: Teeth ratio combined with oral context (gums or contrast)
-    if tooth_ratio < 0.08 and gum_ratio < 0.03:
+    # Mandatory Intraoral Context Check: An intraoral teeth photo MUST contain
+    # oral tissue (gums/lips pink-red ratio >= 2.0%) or oral cavity dark contrast.
+    dark_oral_cavity_mask = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([179, 255, 45]))
+    dark_cavity_ratio = cv2.countNonZero(dark_oral_cavity_mask) / total_pixels
+
+    if gum_ratio < 0.020 and dark_cavity_ratio < 0.015:
+        raise ValueError("Please upload a clear image showing human teeth.")
+
+    if tooth_ratio < 0.05:
         raise ValueError("Please upload a clear image showing human teeth.")
