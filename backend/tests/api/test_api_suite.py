@@ -1,12 +1,16 @@
 import io
 import uuid
+# pyrefly: ignore [missing-import]
 import pytest
+# pyrefly: ignore [missing-import]
 import numpy as np
+# pyrefly: ignore [missing-import]
 import cv2
 from fastapi.testclient import TestClient
 from app import app
 from services.user_store import init_user_database, create_user, create_session
 from services.report_store import init_database
+# pyrefly: ignore [missing-import]
 from passlib.context import CryptContext
 
 client = TestClient(app)
@@ -24,8 +28,14 @@ def make_valid_auth_header():
     return {"Authorization": f"Bearer {token}"}, user
 
 def make_dummy_png_bytes():
-    img = np.full((20, 20, 3), 200, dtype=np.uint8)
-    _, img_encoded = cv2.imencode(".png", img)
+    img = np.zeros((400, 400, 3), dtype=np.uint8)
+    img[:, :] = (100, 100, 200)  # Pink gum background
+    img[150:250, 100:300] = (220, 230, 240)  # White teeth enamel
+    for x in range(120, 300, 30):
+        img[150:250, x:x+2] = (160, 170, 180)
+    noise = np.random.randint(-15, 15, img.shape, dtype=np.int16)
+    img_noisy = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    _, img_encoded = cv2.imencode(".png", img_noisy)
     return img_encoded.tobytes()
 
 # ----------------------------------------------------

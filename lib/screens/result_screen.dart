@@ -1,11 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../services/api_service.dart';
 import '../services/plaque_prediction.dart';
 import '../services/report_exporter.dart';
+import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_button.dart';
 import '../widgets/glass_card.dart';
@@ -18,8 +17,7 @@ class ResultScreen extends StatelessWidget {
     BuildContext context,
     AnalysisResultArguments result,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final existing = prefs.getStringList('scan_reports') ?? [];
+    final existing = await SessionManager.getReportsForCurrentUser();
     final report = {
       'imagePath': result.image.path,
       'processedImage': result.prediction.processedImage,
@@ -32,7 +30,7 @@ class ResultScreen extends StatelessWidget {
       'isDemo': false,
     };
 
-    await prefs.setStringList('scan_reports', [
+    await SessionManager.saveReportsForCurrentUser([
       jsonEncode(report),
       ...existing,
     ]);

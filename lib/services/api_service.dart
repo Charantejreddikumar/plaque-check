@@ -8,6 +8,7 @@ import 'package:mime/mime.dart';
 
 import 'app_config.dart';
 import 'plaque_prediction.dart';
+import 'session_manager.dart';
 
 class ApiService {
   ApiService({http.Client? client, String? baseUrl})
@@ -20,6 +21,14 @@ class ApiService {
   String get _baseUrl => AppConfig.normalizeApiBaseUrl(
     (_baseUrlOverride ?? AppConfig.apiBaseUrl).trim(),
   );
+
+  Future<Map<String, String>> _authHeaders() async {
+    final user = await SessionManager.currentUser();
+    if (user != null && user.accessToken.isNotEmpty) {
+      return {'Authorization': 'Bearer ${user.accessToken}'};
+    }
+    return {};
+  }
 
   Future<PlaquePrediction> predictPlaque(XFile image) async {
     try {
@@ -34,11 +43,12 @@ class ApiService {
 
       debugPrint('IMAGE SIZE: ${bytes.length} bytes');
       debugPrint('IMAGE PATH: ${image.path}');
-      debugPrint('PATH: ${image.path}');
       debugPrint('MIME: ${lookupMimeType(image.path)}');
       debugPrint('FILENAME: $fileName');
 
       final request = http.MultipartRequest('POST', url);
+      final headers = await _authHeaders();
+      request.headers.addAll(headers);
 
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -58,10 +68,14 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
 
       debugPrint('STATUS CODE: ${response.statusCode}');
-
       debugPrint('RAW RESPONSE: ${response.body}');
 
       final body = _decodeBody(response.body);
+
+      if (response.statusCode == 401) {
+        await SessionManager.clearAllUserData();
+        throw const ApiException('Session expired. Please log in again.');
+      }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException(_errorMessage(body));
@@ -74,7 +88,10 @@ class ApiService {
       debugPrint('PREDICTION ERROR: $e');
       debugPrint(stack.toString());
 
-      throw ApiException('Prediction failed: $e');
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(e.toString());
     }
   }
 
@@ -101,11 +118,19 @@ class ApiService {
     try {
       final url = Uri.parse('$_baseUrl/reports');
       debugPrint('REPORTS URL: $url');
+
+      final headers = await _authHeaders();
       final response = await _client
-          .get(url)
+          .get(url, headers: headers)
           .timeout(const Duration(seconds: 5));
 
+      debugPrint('REPORTS RESPONSE STATUS: ${response.statusCode}');
       debugPrint('REPORTS RESPONSE: ${response.body}');
+
+      if (response.statusCode == 401) {
+        await SessionManager.clearAllUserData();
+        throw const ApiException('Session expired. Please log in again.');
+      }
 
       final decoded = jsonDecode(response.body);
 
@@ -142,13 +167,15 @@ class ApiService {
   }
 
   Map<String, dynamic> _decodeBody(String source) {
-    final decoded = jsonDecode(source);
+    try {
+      final decoded = jsonDecode(source);
 
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
-    }
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } catch (_) {}
 
-    throw const FormatException('Backend returned invalid response.');
+    return {};
   }
 
   String _errorMessage(Map<String, dynamic> body) {
@@ -156,6 +183,9 @@ class ApiService {
 
     if (detail is String && detail.isNotEmpty) {
       return detail;
+    }
+    if (detail is List && detail.isNotEmpty) {
+      return detail.map((e) => e.toString()).join('\n');
     }
 
     return 'Plaque analysis failed.';

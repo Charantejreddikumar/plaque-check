@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:plaquecheck/services/api_service.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class MockClient extends http.BaseClient {
   MockClient(this._handler);
   final Future<http.Response> Function(http.BaseRequest request) _handler;
@@ -20,6 +22,10 @@ class MockClient extends http.BaseClient {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   group('ApiService Tests', () {
     test('isBackendHealthy returns true on 200', () async {

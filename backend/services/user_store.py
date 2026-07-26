@@ -107,5 +107,16 @@ def find_user_by_token(token: str) -> dict | None:
     return dict(row) if row else None
 
 
+def delete_session(token: str) -> None:
+    if not token:
+        return
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute(
+            "DELETE FROM sessions WHERE token_hash = ?",
+            (_hash_token(token),),
+        )
+        connection.commit()
+
+
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()

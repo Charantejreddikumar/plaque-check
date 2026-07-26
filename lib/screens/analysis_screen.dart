@@ -92,17 +92,35 @@ class _AnalysisScreenState extends State<AnalysisScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF3BA7A4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+      final message = error.toString().replaceAll('ApiException: ', '').trim();
+      
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFE53E3E)),
+              SizedBox(width: 10),
+              Text('Image Validation'),
+            ],
           ),
-          content: Text(error.toString()),
+          content: Text(
+            message.isEmpty ? 'Please upload a clear image showing human teeth.' : message,
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Retake Image', style: TextStyle(color: Color(0xFF2B7A78), fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       );
-      Navigator.pop(context);
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 

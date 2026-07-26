@@ -119,11 +119,38 @@ class SessionManager {
     await prefs.remove(_sessionKey);
   }
 
+  static Future<void> clearAllUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userKey = await currentUserReportsKey();
+    if (userKey != null) {
+      await prefs.remove(userKey);
+    }
+    await prefs.remove('scan_reports');
+    await clearSession();
+  }
+
   static Future<String?> currentUserReportsKey() async {
     final user = await currentUser();
     if (user == null || user.userId <= 0) {
       return null;
     }
     return 'scan_reports_user_${user.userId}';
+  }
+
+  static Future<List<String>> getReportsForCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = await currentUserReportsKey();
+    if (key == null) {
+      return [];
+    }
+    return prefs.getStringList(key) ?? [];
+  }
+
+  static Future<void> saveReportsForCurrentUser(List<String> reports) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = await currentUserReportsKey();
+    if (key != null) {
+      await prefs.setStringList(key, reports);
+    }
   }
 }

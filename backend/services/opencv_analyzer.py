@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 from services.analyzer import Analyzer
+from services.image_validator import validate_teeth_image
 
 PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
@@ -12,7 +13,10 @@ class OpenCVAnalyzer(Analyzer):
     def analyze(self, image_path: Path) -> dict:
         image = cv2.imread(str(image_path))
         if image is None:
-            raise ValueError("Unable to read uploaded image.")
+            raise ValueError("Please upload a clear image showing human teeth.")
+
+        # Perform strict teeth image validation
+        validate_teeth_image(image)
 
         resized = _resize_for_analysis(image)
         hsv = cv2.cvtColor(resized, cv2.COLOR_BGR2HSV)
@@ -28,7 +32,15 @@ class OpenCVAnalyzer(Analyzer):
         )
         plaque_percent = int(np.clip(plaque_percent, 0, 100))
 
-        severity = _severity_for(plaque_percent)
+        # False positive reduction: if plaque coverage is less than 3%, report 0% plaque
+        if plaque_percent < 3:
+            plaque_percent = 0
+            severity = "Low"
+            recommendation = "No plaque detected."
+        else:
+            severity = _severity_for(plaque_percent)
+            recommendation = _recommendation_for(severity)
+
         confidence = _confidence_for(tooth_pixels, resized.shape[0] * resized.shape[1])
 
         return {
@@ -37,7 +49,7 @@ class OpenCVAnalyzer(Analyzer):
             "plaque_percent": plaque_percent,
             "severity": severity,
             "confidence": confidence,
-            "recommendation": _recommendation_for(severity),
+            "recommendation": recommendation,
         }
 
 
@@ -61,12 +73,13 @@ def _estimate_tooth_regions(hsv: np.ndarray) -> np.ndarray:
 
 
 def _estimate_plaque_regions(hsv: np.ndarray, tooth_mask: np.ndarray) -> np.ndarray:
-    yellow_lower = np.array([12, 35, 80], dtype=np.uint8)
-    yellow_upper = np.array([45, 210, 255], dtype=np.uint8)
+    # Plaque biofilm color: yellow/orange hue with distinct saturation (>=55)
+    yellow_lower = np.array([14, 55, 80], dtype=np.uint8)
+    yellow_upper = np.array([40, 255, 255], dtype=np.uint8)
     plaque_color = cv2.inRange(hsv, yellow_lower, yellow_upper)
 
     saturation = hsv[:, :, 1]
-    sat_mask = cv2.inRange(saturation, 45, 255)
+    sat_mask = cv2.inRange(saturation, 55, 255)
 
     plaque_mask = cv2.bitwise_and(plaque_color, sat_mask)
     plaque_mask = cv2.bitwise_and(plaque_mask, tooth_mask)

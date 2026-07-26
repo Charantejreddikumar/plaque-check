@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/plaque_prediction.dart';
@@ -33,8 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Local reports keep the dashboard useful when the backend is offline.
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final values = prefs.getStringList('scan_reports') ?? [];
+    final values = await SessionManager.getReportsForCurrentUser();
     return values
         .map((value) {
           try {

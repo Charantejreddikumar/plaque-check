@@ -2,11 +2,11 @@ import logging
 import re
 import sqlite3
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from passlib.context import CryptContext
 
-from services.user_store import create_session, create_user, find_user_by_email
+from services.user_store import create_session, create_user, delete_session, find_user_by_email
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -96,3 +96,11 @@ def login(payload: LoginRequest) -> dict:
         "access_token": token,
         "token_type": "bearer",
     }
+
+
+@router.post("/logout")
+def logout(authorization: str = Header(default="")) -> dict:
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() == "bearer" and token:
+        delete_session(token.strip())
+    return {"success": True, "message": "Logged out successfully"}

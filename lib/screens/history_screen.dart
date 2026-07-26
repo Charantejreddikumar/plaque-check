@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/plaque_prediction.dart';
 import '../services/report_exporter.dart';
+import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_button.dart';
 import '../widgets/glass_card.dart';
@@ -32,8 +32,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       // Local reports keep history usable when the backend is offline.
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final values = prefs.getStringList('scan_reports') ?? [];
+    final values = await SessionManager.getReportsForCurrentUser();
     return values
         .map((value) {
           try {

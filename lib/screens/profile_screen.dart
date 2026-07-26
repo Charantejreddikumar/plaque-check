@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/plaque_prediction.dart';
@@ -26,8 +25,7 @@ class ProfileScreen extends StatelessWidget {
       // Local reports keep profile counts available when the backend is offline.
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final values = prefs.getStringList('scan_reports') ?? [];
+    final values = await SessionManager.getReportsForCurrentUser();
     return values
         .map((value) {
           try {
@@ -138,7 +136,7 @@ class ProfileScreen extends StatelessWidget {
                   label: 'Logout',
                   icon: Icons.logout,
                   onPressed: () async {
-                    await SessionManager.clearSession();
+                    await SessionManager.clearAllUserData();
                     if (!context.mounted) {
                       return;
                     }
