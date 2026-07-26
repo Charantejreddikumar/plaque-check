@@ -121,12 +121,7 @@ class SessionManager {
 
   static Future<void> clearAllUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    final userKey = await currentUserReportsKey();
-    if (userKey != null) {
-      await prefs.remove(userKey);
-    }
-    await prefs.remove('scan_reports');
-    await clearSession();
+    await prefs.clear();
   }
 
   static Future<String?> currentUserReportsKey() async {

@@ -80,7 +80,10 @@ class DLAnalyzer(Analyzer):
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
         predicted_class = int(np.argmax(probabilities))
-        confidence = round(float(probabilities[predicted_class]), 2)
+        confidence = float(probabilities[predicted_class])
+
+        if confidence < 0.55:
+            raise ValueError("Please upload a clear image showing human teeth.")
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
@@ -90,7 +93,7 @@ class DLAnalyzer(Analyzer):
             "processed_image": _relative_path(overlay_path),
             "plaque_percent": meta["plaque_percent"],
             "severity": meta["severity"],
-            "confidence": max(confidence, 0.95),
+            "confidence": round(max(confidence, 0.95), 2),
             "recommendation": meta["recommendation"],
         }
 
@@ -106,7 +109,10 @@ class DLAnalyzer(Analyzer):
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
         predicted_class = int(np.argmax(probabilities))
-        confidence = round(float(probabilities[predicted_class]), 2)
+        confidence = float(probabilities[predicted_class])
+
+        if confidence < 0.55:
+            raise ValueError("Please upload a clear image showing human teeth.")
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])

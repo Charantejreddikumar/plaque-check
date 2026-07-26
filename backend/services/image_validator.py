@@ -71,3 +71,13 @@ def validate_teeth_image(image: np.ndarray) -> None:
 
     if tooth_ratio < 0.05:
         raise ValueError("Please upload a clear image showing human teeth.")
+
+    # 4. Spatial Proximity Verification (Teeth Enamel bordering Gum / Oral Tissue)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+    dilated_teeth = cv2.dilate(tooth_mask, kernel)
+    oral_context_mask = cv2.bitwise_or(gum_mask, dark_oral_cavity_mask)
+    boundary_intersection = cv2.bitwise_and(dilated_teeth, oral_context_mask)
+    boundary_ratio = cv2.countNonZero(boundary_intersection) / total_pixels
+
+    if boundary_ratio < 0.008:
+        raise ValueError("Please upload a clear image showing human teeth.")

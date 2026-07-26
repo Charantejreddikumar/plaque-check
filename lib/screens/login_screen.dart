@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
-      await SessionManager.clearSession();
+      await SessionManager.clearAllUserData();
       await SessionManager.saveSession(user);
       if (!mounted) {
         return;
