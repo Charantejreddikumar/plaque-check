@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from passlib.context import CryptContext
 
-from services.user_store import create_user, find_user_by_email
+from services.user_store import create_session, create_user, find_user_by_email
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -87,9 +87,12 @@ def login(payload: LoginRequest) -> dict:
 
     logger.info("Login success: %s.", email)
     print("SUCCESS")
+    token = create_session(user["id"])
     return {
         "success": True,
         "user_id": user["id"],
         "name": user["name"],
         "email": user["email"],
+        "access_token": token,
+        "token_type": "bearer",
     }

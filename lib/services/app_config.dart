@@ -5,7 +5,7 @@ class AppConfig {
   const AppConfig._();
 
   static const apiBaseUrlEnvironmentKey = 'PLAQUECHECK_API_BASE_URL';
-  static const defaultApiBaseUrl = 'http://172.23.49.64:8000';
+  static const defaultApiBaseUrl = 'https://plaque-check-backend.onrender.com';
   static const backendUrlPreferenceKey = 'developer_backend_url';
 
   static String? _savedApiBaseUrl;

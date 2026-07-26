@@ -2,9 +2,10 @@ from pathlib import Path
 from uuid import uuid4
 import logging
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from services.plaque_analyzer import analyze_image
+from services.auth_context import current_user
 from services.dataset_store import store_dataset_sample
 from services.report_store import save_report
 
@@ -22,7 +23,10 @@ CONTENT_TYPE_EXTENSIONS = {
 
 
 @router.post("/predict")
-async def predict(image: UploadFile = File(...)) -> dict:
+async def predict(
+    image: UploadFile = File(...),
+    user: dict = Depends(current_user),
+) -> dict:
     file = image
 
     print("===== UPLOAD DEBUG =====")
@@ -58,8 +62,9 @@ async def predict(image: UploadFile = File(...)) -> dict:
         )
 
     extension = ext if ext_ok else CONTENT_TYPE_EXTENSIONS.get(content_type, "jpg")
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    saved_path = UPLOAD_DIR / f"{uuid4().hex}.{extension}"
+    user_upload_dir = UPLOAD_DIR / str(user["id"])
+    user_upload_dir.mkdir(parents=True, exist_ok=True)
+    saved_path = user_upload_dir / f"{uuid4().hex}.{extension}"
 
     contents = await file.read()
     if not contents:
@@ -72,7 +77,7 @@ async def predict(image: UploadFile = File(...)) -> dict:
     try:
         prediction = analyze_image(saved_path)
         store_dataset_sample(saved_path, prediction["processed_image"])
-        stored_prediction = save_report(prediction)
+        stored_prediction = save_report(user["id"], prediction)
         logger.info(
             "Analysis complete: report_id=%s plaque=%s severity=%s.",
             stored_prediction["report_id"],

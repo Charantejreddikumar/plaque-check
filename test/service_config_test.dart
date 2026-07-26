@@ -15,7 +15,10 @@ void main() {
 
   group('AppConfig', () {
     test('uses a single default API base URL', () {
-      expect(AppConfig.defaultApiBaseUrl, 'http://192.168.1.13:8000');
+      expect(
+        AppConfig.defaultApiBaseUrl,
+        'https://plaque-check-backend.onrender.com',
+      );
       expect(AppConfig.apiBaseUrl, AppConfig.defaultApiBaseUrl);
     });
 

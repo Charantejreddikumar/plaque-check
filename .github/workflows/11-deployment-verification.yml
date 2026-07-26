@@ -1,0 +1,38 @@
+name: 11 - Deployment Verification (300 Checks)
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  deployment-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-html httpx requests opencv-python-headless numpy passlib bcrypt
+
+      - name: Run 300 Deployment Verification Checks
+        run: |
+          cd backend
+          pytest tests/deployment/ --html=deployment_verification_report.html --self-contained-html --junitxml=deployment_junit.xml
+
+      - name: Upload Deployment Verification Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-verification-reports
+          path: |
+            backend/deployment_verification_report.html
+            backend/deployment_junit.xml

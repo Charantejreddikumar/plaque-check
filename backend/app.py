@@ -2,10 +2,10 @@ from fastapi import FastAPI, HTTPException as FastAPIHTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from routes.debug import router as debug_router
 from routes.auth import router as auth_router
+from routes.media import router as media_router
 from routes.predict import router as predict_router
 from routes.reports import router as reports_router
 from services.report_store import init_database
@@ -101,9 +101,7 @@ app.include_router(predict_router)
 app.include_router(reports_router)
 app.include_router(debug_router)
 app.include_router(auth_router)
-
-for static_dir in ("processed", "uploads"):
-    app.mount(f"/{static_dir}", StaticFiles(directory=BACKEND_DIR / static_dir), name=static_dir)
+app.include_router(media_router)
 
 
 @app.on_event("startup")

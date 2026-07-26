@@ -1,0 +1,45 @@
+name: 09 - Aggregated Coverage Reporting
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Flutter Coverage
+        run: |
+          flutter pub get
+          flutter test --coverage
+
+      - name: Python Coverage
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest pytest-cov httpx requests opencv-python-headless numpy passlib bcrypt
+          pytest --cov=. --cov-report=xml:coverage.xml --cov-report=html:htmlcov
+
+      - name: Upload All Coverage Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage-reports
+          path: |
+            coverage/lcov.info
+            backend/coverage.xml
+            backend/htmlcov/

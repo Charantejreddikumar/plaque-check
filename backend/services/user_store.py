@@ -1,4 +1,6 @@
 import sqlite3
+import hashlib
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,6 +19,16 @@ def init_user_database() -> None:
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+                token_hash TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
             """
         )
@@ -57,3 +69,43 @@ def find_user_by_email(email: str) -> dict | None:
         ).fetchone()
 
     return dict(row) if row else None
+
+
+def create_session(user_id: int) -> str:
+    init_user_database()
+    token = secrets.token_urlsafe(32)
+    token_hash = _hash_token(token)
+    created_at = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute(
+            """
+            INSERT INTO sessions (token_hash, user_id, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (token_hash, user_id, created_at),
+        )
+        connection.commit()
+    return token
+
+
+def find_user_by_token(token: str) -> dict | None:
+    if not token:
+        return None
+
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute(
+            """
+            SELECT users.id, users.name, users.email, users.created_at
+            FROM sessions
+            JOIN users ON users.id = sessions.user_id
+            WHERE sessions.token_hash = ?
+            """,
+            (_hash_token(token),),
+        ).fetchone()
+
+    return dict(row) if row else None
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

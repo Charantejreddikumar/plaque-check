@@ -79,11 +79,13 @@ def _save_visual_outputs(
     image: np.ndarray,
     plaque_mask: np.ndarray,
 ) -> Path:
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    user_dir = image_path.parent.name
+    processed_dir = PROCESSED_DIR / user_dir
+    processed_dir.mkdir(parents=True, exist_ok=True)
     stem = image_path.stem
-    original_path = PROCESSED_DIR / f"{stem}_original.png"
-    mask_path = PROCESSED_DIR / f"{stem}_mask.png"
-    overlay_path = PROCESSED_DIR / f"{stem}_overlay.png"
+    original_path = processed_dir / f"{stem}_original.png"
+    mask_path = processed_dir / f"{stem}_mask.png"
+    overlay_path = processed_dir / f"{stem}_overlay.png"
 
     color_overlay = np.zeros_like(image)
     color_overlay[plaque_mask > 0] = (0, 72, 255)

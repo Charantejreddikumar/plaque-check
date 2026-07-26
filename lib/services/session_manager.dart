@@ -7,6 +7,7 @@ class SessionUser {
     required this.userId,
     required this.fullName,
     required this.email,
+    this.accessToken = '',
   });
 
   factory SessionUser.fromJson(Map<String, dynamic> json) {
@@ -14,6 +15,7 @@ class SessionUser {
       userId: json['user_id'] as int? ?? json['userId'] as int? ?? 0,
       fullName: json['name'] as String? ?? json['fullName'] as String? ?? '',
       email: json['email'] as String? ?? '',
+      accessToken: json['access_token'] as String? ?? json['accessToken'] as String? ?? '',
     );
   }
 
@@ -22,12 +24,14 @@ class SessionUser {
       userId: json['user_id'] as int? ?? 0,
       fullName: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
+      accessToken: json['access_token'] as String? ?? '',
     );
   }
 
   final int userId;
   final String fullName;
   final String email;
+  final String accessToken;
 
   String get initials {
     final parts = fullName
@@ -51,6 +55,7 @@ class SessionUser {
       'user_id': userId,
       'name': fullName,
       'email': email,
+      'access_token': accessToken,
     };
   }
 }
@@ -61,6 +66,7 @@ class SessionManager {
   static const _userIdKey = 'user_id';
   static const _nameKey = 'name';
   static const _emailKey = 'email';
+  static const _accessTokenKey = 'access_token';
 
   static Future<SessionUser?> currentUser() async {
     final prefs = await SharedPreferences.getInstance();
@@ -89,6 +95,7 @@ class SessionManager {
       userId: prefs.getInt(_userIdKey) ?? 0,
       fullName: prefs.getString(_nameKey) ?? '',
       email: email,
+      accessToken: prefs.getString(_accessTokenKey) ?? '',
     );
   }
 
@@ -98,6 +105,7 @@ class SessionManager {
     await prefs.setInt(_userIdKey, user.userId);
     await prefs.setString(_nameKey, user.fullName);
     await prefs.setString(_emailKey, user.email);
+    await prefs.setString(_accessTokenKey, user.accessToken);
     await prefs.setString(_sessionKey, jsonEncode(user.toJson()));
   }
 
@@ -107,6 +115,15 @@ class SessionManager {
     await prefs.remove(_userIdKey);
     await prefs.remove(_nameKey);
     await prefs.remove(_emailKey);
+    await prefs.remove(_accessTokenKey);
     await prefs.remove(_sessionKey);
+  }
+
+  static Future<String?> currentUserReportsKey() async {
+    final user = await currentUser();
+    if (user == null || user.userId <= 0) {
+      return null;
+    }
+    return 'scan_reports_user_${user.userId}';
   }
 }

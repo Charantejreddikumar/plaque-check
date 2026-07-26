@@ -23,5 +23,12 @@ backend/processed/*
 # SQLite databases
 backend/database/*.db
 
+# Coverage & Test reports
+.coverage
+coverage/
+*.xml
+*.html
+htmlcov/
+
 # Logs
 *.log
