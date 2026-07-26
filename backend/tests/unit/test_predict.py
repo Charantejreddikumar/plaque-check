@@ -1,8 +1,10 @@
 import io
+# pyrefly: ignore [missing-import]
 import pytest
 from fastapi.testclient import TestClient
 from app import app
 from services.user_store import create_user, create_session, init_user_database
+# pyrefly: ignore [missing-import]
 from passlib.context import CryptContext
 
 client = TestClient(app)
@@ -25,6 +27,7 @@ def test_predict_unauthorized():
 def test_predict_valid_image():
     headers = get_auth_header()
     # Create a tiny 10x10 white PNG image
+    # pyrefly: ignore [missing-import]
     import cv2
     import numpy as np
     img = np.full((10, 10, 3), 255, dtype=np.uint8)
