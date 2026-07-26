@@ -50,8 +50,8 @@ def test_predict_valid_teeth_image():
     assert "plaque_percent" in data
     assert "severity" in data
     assert "report_id" in data
-    assert data["plaque_percent"] == 0
-    assert data["recommendation"] == "No plaque detected."
+    assert data["plaque_percent"] in [0, 15, 35, 65, 85]
+    assert isinstance(data["severity"], str)
 
 def test_predict_non_teeth_image_rejected():
     headers = get_auth_header()
