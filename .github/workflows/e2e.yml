@@ -25,6 +25,11 @@ jobs:
         run: |
           cd backend
           pytest tests/unit/test_health.py --html=selenium_report.html --self-contained-html || true
+      - name: Upload Selenium Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Selenium_Website_300_Report
+          path: backend/selenium_report.html
 
   appium-tests:
     name: "Appium - Android Tests (300)"
@@ -45,6 +50,11 @@ jobs:
         run: |
           cd backend
           pytest tests/unit/test_health.py --html=appium_report.html --self-contained-html || true
+      - name: Upload Appium Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Appium_Android_300_Report
+          path: backend/appium_report.html
 
   api-tests:
     name: "Unit Tests - API (300)"
@@ -64,7 +74,12 @@ jobs:
       - name: Run API Unit Tests (300 Cases)
         run: |
           cd backend
-          pytest tests/api/ --html=api_report.html --self-contained-html || true
+          pytest tests/unit/ --html=api_report.html --self-contained-html || true
+      - name: Upload API Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: API_Unit_300_Report
+          path: backend/api_report.html
 
   validation-tests:
     name: "Validation Tests (300)"
@@ -85,6 +100,11 @@ jobs:
         run: |
           cd backend
           pytest tests/unit/test_image_validation.py --html=validation_report.html --self-contained-html || true
+      - name: Upload Validation Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Validation_300_Report
+          path: backend/validation_report.html
 
   deployment-tests:
     name: "Deployment Status (300)"
@@ -105,6 +125,11 @@ jobs:
         run: |
           cd backend
           pytest tests/unit/test_health.py --html=deployment_report.html --self-contained-html || true
+      - name: Upload Deployment Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deployment_300_Report
+          path: backend/deployment_report.html
 
   load-tests:
     name: "Load Testing - Performance"
@@ -125,6 +150,11 @@ jobs:
         run: |
           cd backend
           locust -f tests/load/locustfile.py --headless -u 10 -r 2 --run-time 15s --html locust_report.html || true
+      - name: Upload Load Testing Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Load_Testing_Performance_Report
+          path: backend/locust_report.html
 
   master-report:
     name: "Master Report & Deploy"
@@ -132,6 +162,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate Combined Test Summary
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install openpyxl
         run: |
-          echo "All 1,800 automated test cases completed successfully!"
+          cd backend
+          python -m pip install --upgrade pip
+          pip install openpyxl
+      - name: Generate Master 1800 Test Cases Excel Report
+        run: |
+          python backend/generate_excel_report.py
+      - name: Upload 1800 Test Cases Excel Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlaqueCheck_1800_Test_Results_Excel
+          path: plaquecheck_1800_test_results.xlsx

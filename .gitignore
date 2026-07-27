@@ -28,6 +28,7 @@ backend/database/*.db
 coverage/
 *.xml
 *.html
+*.xlsx
 htmlcov/
 
 # Logs
