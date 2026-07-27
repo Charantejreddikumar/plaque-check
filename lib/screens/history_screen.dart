@@ -291,24 +291,49 @@ class ReportDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Recommendations',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary(context),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
+                Row(
+                  children: [
+                    const Icon(Icons.lightbulb_outline, color: Color(0xFF69C7C3), size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Suggestions for Betterment',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  report.recommendation.isEmpty
-                      ? 'No recommendation available for this report.'
-                      : report.recommendation,
-                  style: TextStyle(
-                    color: AppTheme.textSecondary(context),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 1.45,
+                const SizedBox(height: 12),
+                ...report.suggestionsList.map(
+                  (suggestion) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.check_circle_outline,
+                            color: Color(0xFF3BA7A4),
+                            size: 15,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            suggestion,
+                            style: TextStyle(
+                              color: AppTheme.textPrimary(context),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

@@ -42,6 +42,17 @@ class PlaquePrediction {
 
   int get oralHealthScore =>
       (100 - plaquePercent).clamp(0, 100);
+
+  List<String> get suggestionsList {
+    if (recommendation.trim().isEmpty) {
+      return ['Maintain regular 2-minute brushing and daily flossing routine.'];
+    }
+    return recommendation
+        .split('\n')
+        .map((s) => s.replaceAll(RegExp(r'^[•\-\*]\s*'), '').trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
 }
 
 class ScanReport {
@@ -117,6 +128,17 @@ class ScanReport {
   final double confidence;
   final String recommendation;
   final bool isBackend;
+
+  List<String> get suggestionsList {
+    if (recommendation.trim().isEmpty) {
+      return ['Maintain regular 2-minute brushing and daily flossing routine.'];
+    }
+    return recommendation
+        .split('\n')
+        .map((s) => s.replaceAll(RegExp(r'^[•\-\*]\s*'), '').trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
 }
 
 class AnalysisResultArguments {

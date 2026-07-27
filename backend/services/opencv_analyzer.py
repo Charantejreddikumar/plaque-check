@@ -166,10 +166,22 @@ def _confidence_for(tooth_pixels: int, total_pixels: int) -> float:
 
 def _recommendation_for(severity: str) -> str:
     if severity == "Low":
-        return "Maintain brushing and continue monitoring."
+        return (
+            "• Brush twice daily for 2 minutes using fluoride toothpaste.\n"
+            "• Floss daily to clean interdental spaces.\n"
+            "• Schedule routine dental checkups every 6 months."
+        )
     if severity == "Moderate":
-        return "Improve brushing coverage and review plaque-prone areas closely."
-    return "Prioritize thorough cleaning and consider professional dental advice."
+        return (
+            "• Focus on posterior molars and gingival margins where plaque accumulates.\n"
+            "• Use an electric toothbrush and interdental cleaning brushes.\n"
+            "• Rinse daily with an antibacterial mouthwash."
+        )
+    return (
+        "• Perform thorough 2-minute brushing twice daily with soft bristles.\n"
+        "• Dedicated flossing and gumline cleaning required to prevent tartar formation.\n"
+        "• Schedule professional dental scaling and consultation promptly."
+    )
 
 
 def _relative_path(path: Path) -> str:

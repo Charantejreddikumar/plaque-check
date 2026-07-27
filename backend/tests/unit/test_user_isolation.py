@@ -80,6 +80,22 @@ def test_user_media_file_access_denied_for_other_user():
     assert res_media_b.json()["detail"] == "File access denied"
 
 
+def test_user_media_file_access_with_query_param_token():
+    user_a, token_a = create_test_user("usera_query_token")
+
+    image_bytes = create_synthetic_teeth_bytes()
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    files = {"image": ("teeth_a.png", io.BytesIO(image_bytes), "image/png")}
+    res_a = client.post("/predict", headers=headers_a, files=files)
+    assert res_a.status_code == 200
+    processed_path = res_a.json()["processed_image"]
+
+    # User A accesses media file using URL query param ?token=... without Authorization header
+    res_media_query = client.get(f"/{processed_path}?token={token_a}")
+    assert res_media_query.status_code == 200
+    assert len(res_media_query.content) > 0
+
+
 def test_logout_session_invalidation():
     user, token = create_test_user("logout_user")
     headers = {"Authorization": f"Bearer {token}"}

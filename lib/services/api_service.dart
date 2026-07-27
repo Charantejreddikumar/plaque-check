@@ -156,14 +156,23 @@ class ApiService {
     }
   }
 
-  String mediaUrl(String relativePath) {
+  String mediaUrl(String relativePath, {String? token}) {
     if (relativePath.isEmpty || relativePath.startsWith('http')) {
       return relativePath;
     }
 
-    final url = '$_baseUrl/$relativePath';
-    debugPrint('MEDIA URL: $url');
-    return url;
+    final baseUrl = '$_baseUrl/$relativePath';
+    if (token != null && token.isNotEmpty) {
+      final uri = Uri.parse(baseUrl);
+      final params = Map<String, String>.from(uri.queryParameters);
+      params['token'] = token;
+      final url = uri.replace(queryParameters: params).toString();
+      debugPrint('MEDIA URL: $url');
+      return url;
+    }
+
+    debugPrint('MEDIA URL: $baseUrl');
+    return baseUrl;
   }
 
   Map<String, dynamic> _decodeBody(String source) {

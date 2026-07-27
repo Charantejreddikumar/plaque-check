@@ -16,19 +16,25 @@ Uint8List buildReportPdf(ReportExportData report) {
     write('$id 0 obj\n$body\nendobj\n');
   }
 
+  final suggestions = report.recommendation.isEmpty
+      ? ['Maintain regular 2-minute brushing and daily flossing routine.']
+      : report.recommendation
+          .split('\n')
+          .map((s) => s.replaceAll(RegExp(r'^[•\-\*]\s*'), '').trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
   final lines = [
-    'PlaqueCheck Diagnostic Report',
-    'Scan date: ${_formatDate(report.scanDate)}',
-    'Plaque percentage: ${report.plaquePercent}%',
-    'Oral Health Score: ${report.oralHealthScore}',
+    'PlaqueCheck Clinical Diagnostic Report',
+    'Scan Date: ${_formatDate(report.scanDate)}',
+    'Oral Health Score: ${report.oralHealthScore}/100',
+    'Plaque Coverage: ${report.plaquePercent}%',
     'Risk Level: ${report.riskLevel}',
-    'Confidence: ${(report.confidence * 100).round()}%',
-    'Original image: ${report.originalImage.isEmpty ? 'Not available' : report.originalImage}',
-    'Processed image: ${report.processedImage.isEmpty ? 'Not available' : report.processedImage}',
-    'Recommendations:',
-    report.recommendation.isEmpty
-        ? 'No recommendation available.'
-        : report.recommendation,
+    'Analysis Confidence: ${(report.confidence * 100).round()}%',
+    'Original Image: ${report.originalImage.isEmpty ? 'Recorded' : report.originalImage}',
+    'AI Plaque Map: ${report.processedImage.isEmpty ? 'Generated' : report.processedImage}',
+    'Suggestions for Betterment:',
+    ...suggestions.map((s) => '- $s'),
   ];
 
   final content = StringBuffer('BT\n/F1 18 Tf\n72 760 Td\n');

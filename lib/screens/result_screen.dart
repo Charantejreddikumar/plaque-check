@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_button.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/platform_image.dart';
+import 'history_screen.dart';
 
 class ResultScreen extends StatelessWidget {
   const ResultScreen({super.key});
@@ -18,7 +19,7 @@ class ResultScreen extends StatelessWidget {
     AnalysisResultArguments result,
   ) async {
     final existing = await SessionManager.getReportsForCurrentUser();
-    final report = {
+    final reportData = {
       'imagePath': result.image.path,
       'processedImage': result.prediction.processedImage,
       'date': DateTime.now().toIso8601String(),
@@ -31,19 +32,90 @@ class ResultScreen extends StatelessWidget {
     };
 
     await SessionManager.saveReportsForCurrentUser([
-      jsonEncode(report),
+      jsonEncode(reportData),
       ...existing,
     ]);
+
+    final savedReport = ScanReport.fromLocalJson(reportData);
 
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF3BA7A4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        content: const Text('AI diagnostic report saved to history.'),
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border.all(color: const Color(0xFF2B7A78).withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3BA7A4).withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle_outline, color: Color(0xFF3BA7A4), size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Report Saved',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Plaque map, score & betterment tips preserved.',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            GlassButton(
+              label: 'View Saved Report',
+              icon: Icons.visibility_outlined,
+              isPrimary: true,
+              onPressed: () {
+                Navigator.pop(bottomSheetContext);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => ReportDetailScreen(report: savedReport),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            GlassButton(
+              label: 'Export PDF Report',
+              icon: Icons.picture_as_pdf_outlined,
+              onPressed: () {
+                Navigator.pop(bottomSheetContext);
+                _exportPdf(context, result);
+              },
+            ),
+            const SizedBox(height: 12),
+            GlassButton(
+              label: 'Close',
+              icon: Icons.close,
+              onPressed: () => Navigator.pop(bottomSheetContext),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -127,6 +199,7 @@ class ResultScreen extends StatelessWidget {
           _ResultImagePreview(
             label: 'Original scan',
             imagePath: result.image.path,
+            fallbackUrl: apiService.mediaUrl(prediction.imagePath),
           ),
           if (prediction.processedImage.isNotEmpty) ...[
             const SizedBox(height: 14),
@@ -142,6 +215,10 @@ class ResultScreen extends StatelessWidget {
             plaquePercentage: prediction.plaquePercent,
             severity: prediction.severity,
             oralHealthScore: prediction.oralHealthScore,
+          ),
+          const SizedBox(height: 18),
+          _BettermentSuggestionsCard(
+            suggestions: prediction.suggestionsList,
           ),
           const SizedBox(height: 18),
           _ClinicalSummaryCard(
@@ -198,12 +275,14 @@ class _ResultImagePreview extends StatelessWidget {
     required this.label,
     required this.imagePath,
     this.processedUrl = '',
+    this.fallbackUrl = '',
     this.isNetworkImage = false,
   });
 
   final String label;
   final String imagePath;
   final String processedUrl;
+  final String fallbackUrl;
   final bool isNetworkImage;
 
   @override
@@ -220,7 +299,7 @@ class _ResultImagePreview extends StatelessWidget {
           width: double.infinity,
           alignment: Alignment.center,
           color: Colors.white.withValues(alpha: 0.06),
-          child: imagePath.isEmpty
+          child: imagePath.isEmpty && processedUrl.isEmpty && fallbackUrl.isEmpty
               ? const _HeatmapPlaceholder()
               : Stack(
                   fit: StackFit.expand,
@@ -234,6 +313,12 @@ class _ResultImagePreview extends StatelessWidget {
                       buildPlatformImage(
                         imagePath: imagePath,
                         fit: BoxFit.cover,
+                        errorWidget: fallbackUrl.isNotEmpty
+                            ? buildNetworkImage(
+                                imageUrl: fallbackUrl,
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
                     DecoratedBox(
                       decoration: BoxDecoration(
@@ -252,7 +337,7 @@ class _ResultImagePreview extends StatelessWidget {
                       bottom: 14,
                       child: Text(
                         label,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -446,6 +531,84 @@ class _CircularScore extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _BettermentSuggestionsCard extends StatelessWidget {
+  const _BettermentSuggestionsCard({required this.suggestions});
+
+  final List<String> suggestions;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      borderRadius: 30,
+      opacity: 0.14,
+      borderOpacity: 0.22,
+      glowColor: const Color(0xFF3BA7A4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF69C7C3), Color(0xFF3BA7A4)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.lightbulb_outline, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Suggestions for Betterment',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary(context),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...suggestions.map(
+            (suggestion) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.check_circle_outline,
+                      color: Color(0xFF3BA7A4),
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      suggestion,
+                      style: TextStyle(
+                        color: AppTheme.textPrimary(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
