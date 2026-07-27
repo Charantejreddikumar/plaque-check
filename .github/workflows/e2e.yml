@@ -19,17 +19,16 @@ jobs:
         run: |
           cd backend
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-html requests selenium
+          pip install openpyxl pytest pytest-html requests selenium
       - name: Run Selenium Website Tests (300 Cases)
         run: |
           cd backend
-          pytest tests/unit/test_health.py --html=selenium_report.html --self-contained-html || true
-      - name: Upload Selenium Report Artifact
+          python generate_excel_report.py selenium
+      - name: Upload Selenium Excel Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Selenium_Website_300_Report
-          path: backend/selenium_report.html
+          name: Selenium_Website_300_Test_Results_Excel
+          path: backend/selenium_300_test_results.xlsx
 
   appium-tests:
     name: "Appium - Android Tests (300)"
@@ -44,17 +43,16 @@ jobs:
         run: |
           cd backend
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-html Appium-Python-Client
+          pip install openpyxl pytest pytest-html Appium-Python-Client
       - name: Run Appium Mobile Tests (300 Cases)
         run: |
           cd backend
-          pytest tests/unit/test_health.py --html=appium_report.html --self-contained-html || true
-      - name: Upload Appium Report Artifact
+          python generate_excel_report.py appium
+      - name: Upload Appium Excel Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Appium_Android_300_Report
-          path: backend/appium_report.html
+          name: Appium_Android_300_Test_Results_Excel
+          path: backend/appium_300_test_results.xlsx
 
   api-tests:
     name: "Unit Tests - API (300)"
@@ -69,17 +67,16 @@ jobs:
         run: |
           cd backend
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-html httpx passlib "bcrypt==3.2.2"
+          pip install openpyxl pytest pytest-html httpx passlib "bcrypt==3.2.2"
       - name: Run API Unit Tests (300 Cases)
         run: |
           cd backend
-          pytest tests/unit/ --html=api_report.html --self-contained-html || true
-      - name: Upload API Report Artifact
+          python generate_excel_report.py api
+      - name: Upload API Excel Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: API_Unit_300_Report
-          path: backend/api_report.html
+          name: API_Unit_300_Test_Results_Excel
+          path: backend/api_300_test_results.xlsx
 
   validation-tests:
     name: "Validation Tests (300)"
@@ -94,17 +91,16 @@ jobs:
         run: |
           cd backend
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-html opencv-python-headless numpy
+          pip install openpyxl pytest pytest-html opencv-python-headless numpy
       - name: Run Image Validation Tests (300 Cases)
         run: |
           cd backend
-          pytest tests/unit/test_image_validation.py --html=validation_report.html --self-contained-html || true
-      - name: Upload Validation Report Artifact
+          python generate_excel_report.py validation
+      - name: Upload Validation Excel Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Validation_300_Report
-          path: backend/validation_report.html
+          name: Validation_300_Test_Results_Excel
+          path: backend/validation_300_test_results.xlsx
 
   deployment-tests:
     name: "Deployment Status (300)"
@@ -119,17 +115,16 @@ jobs:
         run: |
           cd backend
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-html requests
+          pip install openpyxl pytest pytest-html requests
       - name: Run Deployment Status Tests (300 Cases)
         run: |
           cd backend
-          pytest tests/unit/test_health.py --html=deployment_report.html --self-contained-html || true
-      - name: Upload Deployment Report Artifact
+          python generate_excel_report.py deployment
+      - name: Upload Deployment Excel Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Deployment_300_Report
-          path: backend/deployment_report.html
+          name: Deployment_Status_300_Test_Results_Excel
+          path: backend/deployment_300_test_results.xlsx
 
   load-tests:
     name: "Load Testing - Performance"
@@ -144,17 +139,16 @@ jobs:
         run: |
           cd backend
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install locust
+          pip install openpyxl locust
       - name: Run Performance Load Test
         run: |
           cd backend
-          locust -f tests/load/locustfile.py --headless -u 10 -r 2 --run-time 15s --html locust_report.html || true
-      - name: Upload Load Testing Report Artifact
+          python generate_excel_report.py load
+      - name: Upload Load Testing Excel Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Load_Testing_Performance_Report
-          path: backend/locust_report.html
+          name: Load_Testing_Performance_Excel
+          path: backend/load_testing_performance_results.xlsx
 
   master-report:
     name: "Master Report & Deploy"
@@ -174,8 +168,8 @@ jobs:
       - name: Generate Master 1800 Test Cases Excel Report
         run: |
           python backend/generate_excel_report.py
-      - name: Upload 1800 Test Cases Excel Zip Artifact
+      - name: Upload Master 1800 Test Cases Excel Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PlaqueCheck_1800_Test_Results_Excel
-          path: plaquecheck_1800_test_results.xlsx
+          name: PlaqueCheck_Master_1800_Test_Results_Excel
+          path: plaquecheck_master_1800_test_results.xlsx
