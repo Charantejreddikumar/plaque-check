@@ -14,11 +14,12 @@ PT_PATH = MODELS_DIR / "plaque_model.pt"
 PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
 CLASS_MAPPING = {
-    0: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
-    1: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
-    2: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
-    3: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
-    4: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
+    0: {"plaque_percent": -1, "severity": "Invalid", "recommendation": "Please upload a clear close-up image showing human teeth, not a face or non-teeth photo."},
+    1: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
+    2: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
+    3: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
+    4: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
+    5: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
 }
 
 
@@ -48,7 +49,7 @@ class DLAnalyzer(Analyzer):
                 self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 model = models.mobilenet_v3_large(weights=None)
                 in_features = model.classifier[3].in_features
-                model.classifier[3] = nn.Linear(in_features, 5)
+                model.classifier[3] = nn.Linear(in_features, 6)
                 model.load_state_dict(torch.load(str(PT_PATH), map_location=self._device))
                 model.eval()
                 self._pt_model = model
@@ -82,10 +83,11 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        if confidence < 0.55:
-            raise ValueError("Please upload a clear image showing human teeth.")
+        # If predicted class is 0 (Face / Non-teeth) or confidence is low, reject
+        if predicted_class == 0 or confidence < 0.55:
+            raise ValueError("Please upload a clear close-up image showing human teeth, not a face or non-teeth photo.")
 
-        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
+        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
 
         return {
@@ -111,10 +113,11 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        if confidence < 0.55:
-            raise ValueError("Please upload a clear image showing human teeth.")
+        # If predicted class is 0 (Face / Non-teeth) or confidence is low, reject
+        if predicted_class == 0 or confidence < 0.55:
+            raise ValueError("Please upload a clear close-up image showing human teeth, not a face or non-teeth photo.")
 
-        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
+        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
 
         return {

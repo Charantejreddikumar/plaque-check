@@ -4,8 +4,8 @@ import numpy as np
 
 def validate_teeth_image(image: np.ndarray) -> None:
     """
-    Validates whether an uploaded image is a clear, properly lit photo showing human teeth.
-    Raises ValueError with a user-friendly message if the image is invalid.
+    Validates whether an uploaded image is a clear, properly lit close-up photo showing human teeth.
+    Raises ValueError with a user-friendly message if the image is a full/half face photo, blurred, or non-teeth image.
     """
     if image is None or image.size == 0:
         raise ValueError("Please upload a clear image showing human teeth.")
@@ -31,7 +31,30 @@ def validate_teeth_image(image: np.ndarray) -> None:
     if overexposed_ratio > 0.45:
         raise ValueError("Please upload a clear image showing human teeth.")
 
-    # 3. Color & Structural Feature Analysis (Teeth Enamel + Oral Mucosa / Gum region)
+    # 3. Face & Half-Face Detection Filter (Reject full/half face portraits)
+    frontal_cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+    if cv2.os.path.exists(frontal_cascade_path):
+        face_cascade = cv2.CascadeClassifier(frontal_cascade_path)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
+        if len(faces) > 0:
+            raise ValueError("Please upload a close-up image of your teeth, not a full or partial face photo.")
+
+    profile_cascade_path = cv2.data.haarcascades + 'haarcascade_profileface.xml'
+    if cv2.os.path.exists(profile_cascade_path):
+        profile_cascade = cv2.CascadeClassifier(profile_cascade_path)
+        profiles = profile_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
+        if len(profiles) > 0:
+            raise ValueError("Please upload a close-up image of your teeth, not a full or partial face photo.")
+
+    # 4. Facial Skin Dominance Check (YCrCb Color Space)
+    ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
+    skin_mask = cv2.inRange(ycrcb, np.array([0, 133, 77], dtype=np.uint8), np.array([255, 173, 127], dtype=np.uint8))
+    skin_ratio = cv2.countNonZero(skin_mask) / total_pixels
+
+    if skin_ratio > 0.30:
+        raise ValueError("Please upload a close-up image of your teeth, not a face or skin photo.")
+
+    # 5. Color & Structural Feature Analysis (Teeth Enamel + Oral Mucosa / Gum region)
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Tooth enamel region mask: Off-white/cream/neutral tones with low-to-moderate saturation
@@ -72,7 +95,7 @@ def validate_teeth_image(image: np.ndarray) -> None:
     if tooth_ratio < 0.05:
         raise ValueError("Please upload a clear image showing human teeth.")
 
-    # 4. Spatial Proximity Verification (Teeth Enamel bordering Gum / Oral Tissue)
+    # 6. Spatial Proximity Verification (Teeth Enamel bordering Gum / Oral Tissue)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
     dilated_teeth = cv2.dilate(tooth_mask, kernel)
     oral_context_mask = cv2.bitwise_or(gum_mask, dark_oral_cavity_mask)

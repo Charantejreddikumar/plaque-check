@@ -1,7 +1,8 @@
 """
 PyTorch Training & ONNX Export Script for PlaqueCheck Deep Learning Engine
-Target Dataset: Mendeley 10,000+ Pre-staining Intraoral Images (Teeth 5-5)
-Labels: 0 (No Plaque), 1 (Mild Plaque), 2 (Moderate Plaque), 3 (High Plaque), 4 (Severe Plaque)
+Target Datasets:
+ 1. Mendeley Intraoral Dental Images (Teeth 5-5) -> Classes 1 to 5
+ 2. Face & Non-Teeth Dataset (Olivetti & Facial Samples) -> Class 0 (Non-Teeth / Face)
 """
 
 import argparse
@@ -26,14 +27,14 @@ PT_EXPORT_PATH = MODELS_DIR / "plaque_model.pt"
 
 def _compute_label_from_annotation(lbl_path: Path) -> int:
     if not lbl_path.exists():
-        return 0
+        return 1  # Default to 0% plaque intraoral
     try:
         lines = lbl_path.read_text().strip().splitlines()
     except Exception:
-        return 0
+        return 1
 
     if not lines:
-        return 0
+        return 1
 
     plaque_count = 0
     total_count = 0
@@ -49,16 +50,16 @@ def _compute_label_from_annotation(lbl_path: Path) -> int:
                 pass
 
     if total_count == 0 or plaque_count == 0:
-        return 0
+        return 1
 
     ratio = plaque_count / total_count
     if ratio < 0.20:
-        return 1
+        return 2  # Mild
     if ratio < 0.45:
-        return 2
+        return 3  # Moderate
     if ratio < 0.70:
-        return 3
-    return 4
+        return 4  # High
+    return 5  # Severe
 
 
 class IntraoralPlaqueDataset(Dataset):
@@ -67,14 +68,22 @@ class IntraoralPlaqueDataset(Dataset):
         self.transform = transform
         self.samples = []
 
-        # 1. Search for Mendeley data structure (data/images and data/labels)
+        # 1. Load Face / Non-Teeth Negative Dataset (Class 0)
+        non_teeth_dirs = [data_dir / "non_teeth", data_dir / "face", data_dir / "faces"]
+        for nt_dir in non_teeth_dirs:
+            if nt_dir.exists():
+                for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.PNG"]:
+                    for img_path in nt_dir.glob(ext):
+                        self.samples.append((img_path, 0))
+
+        # 2. Search for Mendeley intraoral data structure (data/images and data/labels) -> Classes 1-5
         found_images = list(data_dir.glob("**/data/images"))
         found_labels = list(data_dir.glob("**/data/labels"))
 
         if found_images and found_labels:
             images_dir = found_images[0]
             labels_dir = found_labels[0]
-            print(f"--> Found Mendeley dataset structure: {images_dir}")
+            print(f"--> Found Mendeley intraoral dataset: {images_dir}")
 
             for split in ["train", "valid", "test"]:
                 split_img_dir = images_dir / split
@@ -92,18 +101,18 @@ class IntraoralPlaqueDataset(Dataset):
                             label = _compute_label_from_annotation(lbl_path)
                             self.samples.append((img_path, label))
 
-        # 2. Fallback search for directory-per-class (0, 1, 2, 3, 4)
+        # 3. Directory-per-class fallback
         if len(self.samples) == 0:
             for class_dir in sorted(data_dir.glob("*")):
-                if class_dir.is_dir():
+                if class_dir.is_dir() and class_dir.name not in ["non_teeth", "face"]:
                     label_str = class_dir.name.split("-")[0]
                     if label_str.isdigit():
-                        label = min(int(label_str), 4)
+                        label = min(int(label_str) + 1, 5)
                         for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.PNG"]:
                             for img_path in class_dir.glob(ext):
                                 self.samples.append((img_path, label))
 
-        print(f"--> Total intraoral dataset samples loaded: {len(self.samples)}")
+        print(f"--> Total dataset samples (Intraoral + Face Negative): {len(self.samples)}")
 
     def __len__(self):
         return len(self.samples)
@@ -113,7 +122,6 @@ class IntraoralPlaqueDataset(Dataset):
         try:
             image = Image.open(path).convert("RGB")
         except Exception:
-            # Fallback for any corrupted or truncated image file
             image = Image.new("RGB", (224, 224), (128, 128, 128))
 
         if self.transform:
@@ -140,8 +148,7 @@ def get_data_transforms():
     return train_transform, val_transform
 
 
-def build_model(num_classes: int = 5):
-    # MobileNetV3 Large backbone for ultra-fast ONNX cloud inference
+def build_model(num_classes: int = 6):
     model = models.mobilenet_v3_large(weights=models.MobileNet_V3_Large_Weights.DEFAULT)
     in_features = model.classifier[3].in_features
     model.classifier[3] = nn.Linear(in_features, num_classes)
@@ -150,7 +157,7 @@ def build_model(num_classes: int = 5):
 
 def train_and_export(
     data_dir: Path = DATASET_DIR,
-    epochs: int = 15,
+    epochs: int = 5,
     batch_size: int = 32,
     lr: float = 1e-4,
 ):
@@ -162,7 +169,7 @@ def train_and_export(
     dataset = IntraoralPlaqueDataset(data_dir, transform=train_tf)
 
     if len(dataset) == 0:
-        print(f"No intraoral dataset found in {data_dir}.")
+        print(f"No dataset found in {data_dir}.")
         return
 
     train_size = int(0.85 * len(dataset))
@@ -172,7 +179,7 @@ def train_and_export(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    model = build_model(num_classes=5).to(device)
+    model = build_model(num_classes=6).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
 
@@ -216,6 +223,7 @@ def train_and_export(
             export_onnx(model, device)
 
     print(f"--> Training Complete! Best Validation Accuracy: {best_acc*100:.2f}%")
+    print(f"--> PyTorch Model Exported to: {PT_EXPORT_PATH}")
     print(f"--> ONNX Model Exported to: {ONNX_EXPORT_PATH}")
 
 
@@ -236,7 +244,7 @@ def export_onnx(model: nn.Module, device: torch.device):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train PlaqueCheck Deep Learning Model")
     parser.add_argument("--data_dir", type=str, default=str(DATASET_DIR))
-    parser.add_argument("--epochs", type=int, default=15)
+    parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=1e-4)
     args = parser.parse_args()

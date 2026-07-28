@@ -1,7 +1,11 @@
+from pathlib import Path
+import cv2
 import numpy as np
 import pytest
 
 from services.image_validator import validate_teeth_image
+
+DATASET_NON_TEETH_DIR = Path(__file__).resolve().parents[2] / "dataset" / "non_teeth"
 
 
 def test_validate_empty_image():
@@ -35,6 +39,16 @@ def test_validate_document_non_teeth():
 
     with pytest.raises(ValueError, match="Please upload a clear image showing human teeth."):
         validate_teeth_image(img)
+
+
+def test_validate_face_dataset_rejection():
+    if DATASET_NON_TEETH_DIR.exists():
+        samples = list(DATASET_NON_TEETH_DIR.glob("*.jpg"))[:10]
+        for img_path in samples:
+            img = cv2.imread(str(img_path))
+            if img is not None:
+                with pytest.raises(ValueError):
+                    validate_teeth_image(img)
 
 
 def test_validate_valid_teeth_synthetic():
