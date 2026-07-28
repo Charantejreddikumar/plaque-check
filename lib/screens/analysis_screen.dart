@@ -235,7 +235,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppTheme.surface(context),
+                            color: AppTheme.secondarySurface(context),
                           ),
                           child: const Icon(
                             Icons.biotech_outlined,
