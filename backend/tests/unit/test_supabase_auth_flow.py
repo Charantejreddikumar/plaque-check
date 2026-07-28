@@ -4,8 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import app
-from services.db import get_db_type, get_db_connection
-from services.user_store import create_user, find_user_by_email, create_session, find_user_by_token
+from services.db import get_db_type, get_db_connection, _get_clean_database_url
 
 client = TestClient(app)
 
@@ -26,10 +25,33 @@ def test_db_type_dynamic():
             os.environ["DATABASE_URL"] = orig_env
 
 
+def test_clean_database_url_bracket_and_case_handling():
+    orig_env = {k: os.environ.get(k) for k in ("DATABASE_URL", "Database_URL", "database_url")}
+    try:
+        for k in ("DATABASE_URL", "Database_URL", "database_url"):
+            os.environ.pop(k, None)
+
+        # Test Database_URL casing tolerance and [bracket] stripping + '#' encoding
+        os.environ["Database_URL"] = "postgresql://postgres:[Bunny_a2005#]@db.supabase.co:5432/postgres"
+        cleaned = _get_clean_database_url()
+        assert cleaned == "postgresql://postgres:Bunny_a2005%23@db.supabase.co:5432/postgres"
+        assert get_db_type() == "postgres"
+    finally:
+        for k, v in orig_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+
+from uuid import uuid4
+
 def test_auth_registration_and_login_flow():
-    email = "testuser_persistence@example.com"
+    email = f"testuser_persistence_{uuid4().hex[:8]}@example.com"
     password = "secretpassword123"
     name = "Test Persistence User"
+
 
     # 1. Register new user via API endpoint
     reg_response = client.post(
