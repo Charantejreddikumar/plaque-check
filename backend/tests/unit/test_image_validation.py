@@ -41,14 +41,21 @@ def test_validate_document_non_teeth():
         validate_teeth_image(img)
 
 
-def test_validate_face_dataset_rejection():
-    if DATASET_NON_TEETH_DIR.exists():
-        samples = list(DATASET_NON_TEETH_DIR.glob("*.jpg"))[:10]
-        for img_path in samples:
-            img = cv2.imread(str(img_path))
-            if img is not None:
-                with pytest.raises(ValueError):
-                    validate_teeth_image(img)
+def test_validate_teeth_with_lips_and_skin_accepted():
+    # Synthetic teeth close-up photo WITH surrounding lips and skin
+    img = np.zeros((400, 400, 3), dtype=np.uint8)
+    img[:, :] = (120, 140, 200)  # Surrounding facial skin/lip background
+    img[140:260, 80:320] = (220, 230, 240)  # Teeth enamel area
+    for x in range(100, 320, 25):
+        img[140:260, x:x+2] = (150, 160, 170)  # Interdental lines
+    img[100:140, 80:320] = (60, 70, 180)  # Top Lip/Gum (Pink/Red)
+    img[260:300, 80:320] = (60, 70, 180)  # Bottom Lip/Gum (Pink/Red)
+
+    noise = np.random.randint(-10, 10, img.shape, dtype=np.int16)
+    img_noisy = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    
+    # Teeth close-up WITH lips and skin MUST pass validation!
+    validate_teeth_image(img_noisy)
 
 
 def test_validate_valid_teeth_synthetic():

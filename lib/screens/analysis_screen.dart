@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,7 +10,6 @@ import '../services/plaque_prediction.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
-
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -21,16 +21,17 @@ class AnalysisScreen extends StatefulWidget {
 class _AnalysisScreenState extends State<AnalysisScreen>
     with TickerProviderStateMixin {
   static const _stages = [
-    'Detecting fluorescence regions...',
-    'Analyzing plaque distribution...',
-    'Generating oral diagnostic report...',
+    'Isolating dental structures from soft tissue...',
+    'Analyzing multi-angle plaque distribution...',
+    'Generating comprehensive oral report...',
   ];
 
   late final AnimationController _rotationController;
   late final AnimationController _pulseController;
   int _stageIndex = 0;
   bool _started = false;
-  XFile? _selectedImage;
+
+  Map<String, XFile> _imagesMap = {};
   final ApiService _apiService = ApiService();
 
   @override
@@ -53,18 +54,25 @@ class _AnalysisScreenState extends State<AnalysisScreen>
       return;
     }
     _started = true;
-    _selectedImage = ModalRoute.of(context)?.settings.arguments as XFile?;
+    final rawArg = ModalRoute.of(context)?.settings.arguments;
+    if (rawArg is Map<String, XFile>) {
+      _imagesMap = rawArg;
+    } else if (rawArg is XFile) {
+      _imagesMap['Front View'] = rawArg;
+    }
     _runAnalysisSequence();
   }
 
   Future<void> _runAnalysisSequence() async {
-    final image = _selectedImage;
-    if (image == null) {
+    if (_imagesMap.isEmpty) {
       Navigator.pop(context);
       return;
     }
 
-    final predictionFuture = _apiService.predictPlaque(image);
+    final Map<String, Future<PlaquePrediction>> predictionFutures = {};
+    for (final entry in _imagesMap.entries) {
+      predictionFutures[entry.key] = _apiService.predictPlaque(entry.value);
+    }
 
     for (var i = 0; i < _stages.length; i++) {
       if (!mounted) {
@@ -79,20 +87,50 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     }
 
     try {
-      final prediction = await predictionFuture;
-      if (!mounted) {
+      final List<PlaquePrediction> predictions = [];
+      for (final entry in predictionFutures.entries) {
+        final pred = await entry.value;
+        predictions.add(pred);
+      }
+
+      if (!mounted || predictions.isEmpty) {
         return;
       }
+
+      // Combine Multi-Angle Results
+      final primaryImage = _imagesMap.values.first;
+      final avgPlaque = (predictions.map((p) => p.plaquePercent).reduce((a, b) => a + b) / predictions.length).round();
+
+      String combinedSeverity = 'Low';
+      if (avgPlaque >= 45) {
+        combinedSeverity = 'High';
+      } else if (avgPlaque >= 20) {
+        combinedSeverity = 'Moderate';
+      }
+
+      final avgConfidence = predictions.map((p) => p.confidence).reduce((a, b) => a + b) / predictions.length;
+
+      final combinedPrediction = PlaquePrediction(
+        reportId: predictions.first.reportId,
+        imagePath: primaryImage.path,
+        processedImage: predictions.first.processedImage,
+        plaquePercent: avgPlaque,
+        severity: combinedSeverity,
+        confidence: double.parse(avgConfidence.toStringAsFixed(2)),
+        recommendation: predictions.first.recommendation,
+        timestamp: DateTime.now(),
+      );
+
       try {
         final reportData = {
-          'imagePath': image.path,
-          'processedImage': prediction.processedImage,
-          'date': prediction.timestamp.toIso8601String(),
-          'plaque': prediction.plaquePercent,
-          'severity': prediction.severity,
-          'score': prediction.oralHealthScore,
-          'confidence': prediction.confidence,
-          'recommendation': prediction.recommendation,
+          'imagePath': primaryImage.path,
+          'processedImage': combinedPrediction.processedImage,
+          'date': combinedPrediction.timestamp.toIso8601String(),
+          'plaque': combinedPrediction.plaquePercent,
+          'severity': combinedPrediction.severity,
+          'score': combinedPrediction.oralHealthScore,
+          'confidence': combinedPrediction.confidence,
+          'recommendation': combinedPrediction.recommendation,
           'isDemo': false,
         };
         final existing = await SessionManager.getReportsForCurrentUser();
@@ -106,12 +144,11 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         context,
         '/result',
         arguments: AnalysisResultArguments(
-          image: image,
-          prediction: prediction,
+          image: primaryImage,
+          prediction: combinedPrediction,
         ),
       );
     } catch (error) {
-
       if (!mounted) {
         return;
       }
@@ -125,25 +162,24 @@ class _AnalysisScreenState extends State<AnalysisScreen>
             children: [
               Icon(Icons.warning_amber_rounded, color: Color(0xFFE53E3E)),
               SizedBox(width: 10),
-              Text('Image Validation'),
+              Text('Dental Image Check'),
             ],
           ),
           content: Text(
-            message.isEmpty ? 'Please upload a clear image showing human teeth.' : message,
+            message.isEmpty ? 'Please upload a clear close-up image showing human teeth.' : message,
             style: const TextStyle(fontSize: 14, height: 1.4),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Retake Image', style: TextStyle(color: Color(0xFF2B7A78), fontWeight: FontWeight.bold)),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('Retake Scan', style: TextStyle(color: Color(0xFF2B7A78), fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       );
-
-      if (mounted) {
-        Navigator.pop(context);
-      }
     }
   }
 
@@ -156,7 +192,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
 
   @override
   Widget build(BuildContext context) {
-    final progress = (_stageIndex + 1) / _stages.length;
+    final stageText = _stages[min(_stageIndex, _stages.length - 1)];
 
     return Scaffold(
       body: Container(
@@ -164,161 +200,107 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         height: double.infinity,
         decoration: AppTheme.pageDecoration(context),
         child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, child) {
-                  final pulse = 0.18 + (_pulseController.value * 0.16);
-                  return GlassCard(
-                    borderRadius: 36,
-                    opacity: 0.16,
-                    borderOpacity: 0.26,
-                    glowColor: const Color(0xFF2B7A78).withValues(alpha: pulse),
-                    child: child!,
-                  );
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, child) {
-                            return Container(
-                              width: 150 + (_pulseController.value * 20),
-                              height: 150 + (_pulseController.value * 20),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    const Color(
-                                      0xFF0EA5E9,
-                                    ).withValues(alpha: 0.24),
-                                    const Color(
-                                      0xFF3B82F6,
-                                    ).withValues(alpha: 0.06),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            child: Column(
+              children: [
+                const Spacer(),
+                ScaleTransition(
+                  scale: Tween(begin: 0.95, end: 1.05).animate(_pulseController),
+                  child: RotationTransition(
+                    turns: _rotationController,
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const SweepGradient(
+                          colors: [
+                            Color(0xFF2B7A78),
+                            Color(0xFF3AAFA9),
+                            Color(0xFFDEF2F1),
+                            Color(0xFF2B7A78),
+                          ],
                         ),
-                        RotationTransition(
-                          turns: _rotationController,
-                          child: SizedBox(
-                            width: 116,
-                            height: 116,
-                            child: CircularProgressIndicator(
-                              value: progress,
-                              strokeWidth: 9,
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.12,
-                              ),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF69C7C3),
-                              ),
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF3AAFA9).withValues(alpha: 0.35),
+                            blurRadius: 30,
+                            spreadRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.surface(context),
+                          ),
+                          child: const Icon(
+                            Icons.biotech_outlined,
+                            size: 56,
+                            color: Color(0xFF3AAFA9),
                           ),
                         ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.memory,
-                              color: Color(0xFF69C7C3),
-                              size: 26,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${(progress * 100).round()}%',
-                              style: const TextStyle(
-                                color: Color(0xFFF8FAFC),
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 36),
+                Text(
+                  'Multi-Angle AI Scanning',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary(context),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  stageText,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppTheme.textSecondary(context),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                ),
+                const Spacer(),
+                GlassCard(
+                  borderRadius: 18,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3AAFA9)),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Text(
+                          'Processing ${_imagesMap.length} Angle Slot${_imagesMap.length > 1 ? 's' : ''}',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Text(
-                        _stages[_stageIndex],
-                        key: ValueKey(_stageIndex),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppTheme.textPrimary(context),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'PlaqueCheck AI is performing dental diagnostic analysis.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppTheme.textSecondary(context),
-                        fontSize: 12,
-                        height: 1.45,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-                    _StageTimeline(activeIndex: _stageIndex),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _StageTimeline extends StatelessWidget {
-  const _StageTimeline({required this.activeIndex});
-
-  final int activeIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(3, (index) {
-        final isActive = index <= activeIndex;
-        return Expanded(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 260),
-            height: 5,
-            margin: EdgeInsets.only(right: index == 2 ? 0 : 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              gradient: isActive
-                  ? const LinearGradient(
-                      colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
-                    )
-                  : null,
-              color: isActive ? null : Colors.white.withValues(alpha: 0.12),
-              boxShadow: isActive
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF2B7A78).withValues(alpha: 0.24),
-                        blurRadius: 14,
-                      ),
-                    ]
-                  : null,
-            ),
-          ),
-        );
-      }),
     );
   }
 }

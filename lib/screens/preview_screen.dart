@@ -11,7 +11,16 @@ class PreviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = ModalRoute.of(context)?.settings.arguments as XFile?;
+    final rawArg = ModalRoute.of(context)?.settings.arguments;
+
+    Map<String, XFile> imagesMap = {};
+    if (rawArg is Map<String, XFile>) {
+      imagesMap = rawArg;
+    } else if (rawArg is XFile) {
+      imagesMap['Front View'] = rawArg;
+    }
+
+    final hasImages = imagesMap.isNotEmpty;
 
     return Scaffold(
       body: Container(
@@ -34,7 +43,7 @@ class PreviewScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Review Scan Image',
+                  'Review Multi-Angle Scan',
                   style: TextStyle(
                     color: AppTheme.textPrimary(context),
                     fontSize: 26,
@@ -43,107 +52,94 @@ class PreviewScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Confirm image quality before AI analysis.',
+                  'Confirm image quality for each angle before AI plaque analysis.',
                   style: TextStyle(
                     color: AppTheme.textSecondary(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 26),
-                GlassCard(
-                  borderRadius: 34,
-                  opacity: 0.16,
-                  borderOpacity: 0.24,
-                  glowColor: const Color(0xFF2B7A78),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.image_search_outlined,
-                            color: Color(0xFF69C7C3),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Dental imaging review',
-                            style: TextStyle(
-                              color: AppTheme.textPrimary(context),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
+                const SizedBox(height: 24),
+                if (!hasImages)
+                  const GlassCard(
+                    borderRadius: 24,
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: Text('No scan images selected.'),
                       ),
-                      const SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(26),
-                        child: AspectRatio(
-                          aspectRatio: 0.82,
-                          child: image == null
-                              ? const _MissingImagePlaceholder()
-                              : buildPlatformImage(
-                                  imagePath: image.path,
+                    ),
+                  )
+                else
+                  ...imagesMap.entries.map((entry) {
+                    final label = entry.key;
+                    final file = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: GlassCard(
+                        borderRadius: 24,
+                        opacity: 0.16,
+                        borderOpacity: 0.24,
+                        glowColor: const Color(0xFF2B7A78),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.camera_alt_outlined,
+                                  color: Color(0xFF69C7C3),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  label,
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary(context),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: AspectRatio(
+                                aspectRatio: 1.25,
+                                child: buildPlatformImage(
+                                  imagePath: file.path,
                                   fit: BoxFit.cover,
                                 ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Ensure the teeth are well lit, centered, and sharp enough for plaque region detection.',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary(context),
-                          fontSize: 12,
-                          height: 1.45,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 22),
+                    );
+                  }),
+                const SizedBox(height: 16),
                 GlassButton(
-                  label: 'Analyze Scan',
+                  label: 'Analyze Scan (${imagesMap.length} Angle${imagesMap.length > 1 ? 's' : ''})',
                   icon: Icons.biotech_outlined,
                   isPrimary: true,
-                  onPressed: image == null
+                  onPressed: !hasImages
                       ? () => Navigator.pop(context)
                       : () => Navigator.pushNamed(
                           context,
                           '/analysis',
-                          arguments: image,
+                          arguments: rawArg,
                         ),
                 ),
                 const SizedBox(height: 12),
                 GlassButton(
-                  label: 'Retake',
-                  icon: Icons.camera_alt_outlined,
+                  label: 'Retake Angles',
+                  icon: Icons.refresh_outlined,
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MissingImagePlaceholder extends StatelessWidget {
-  const _MissingImagePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white.withValues(alpha: 0.06),
-      alignment: Alignment.center,
-      child: Text(
-        'No scan image available',
-        style: TextStyle(
-          color: AppTheme.textSecondary(context),
-          fontWeight: FontWeight.w800,
         ),
       ),
     );
