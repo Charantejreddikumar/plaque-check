@@ -274,20 +274,8 @@ class ResultScreen extends StatelessWidget {
       ),
     );
   }
-
-  void _showPlaceholder(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF3BA7A4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        content: Text(
-          '$feature will be connected with backend services later.',
-        ),
-      ),
-    );
-  }
 }
+
 
 class _ResultImagePreview extends StatelessWidget {
   const _ResultImagePreview({
