@@ -830,7 +830,9 @@ class _DashboardReport {
     required this.score,
   });
 
+  // ignore: unused_element
   factory _DashboardReport.fromJson(Map<String, dynamic> json) {
+
     return _DashboardReport(
       date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
       plaque: json['plaque'] as int? ?? 0,
