@@ -5,20 +5,25 @@ from pathlib import Path
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 LOCAL_DB_DIR = Path(__file__).resolve().parents[1] / "database"
 
 
 def get_db_type() -> str:
-    return "postgres" if DATABASE_URL else "sqlite"
+    url = os.getenv("DATABASE_URL", "").strip()
+    return "postgres" if url else "sqlite"
 
 
 @contextmanager
 def get_db_connection(db_name: str = "plaquecheck.db"):
     url = os.getenv("DATABASE_URL", "").strip()
     if url:
-        # Fix Render postgres:// schema if present -> postgresql://
+        # Fix Render/Supabase postgres:// schema if present -> postgresql://
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
 
@@ -40,3 +45,4 @@ def get_db_connection(db_name: str = "plaquecheck.db"):
             conn.commit()
         finally:
             conn.close()
+

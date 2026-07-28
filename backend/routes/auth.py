@@ -1,6 +1,11 @@
 import logging
 import re
 import sqlite3
+try:
+    import psycopg2
+    PSYCOPG2_ERRORS = (psycopg2.IntegrityError,)
+except ImportError:
+    PSYCOPG2_ERRORS = ()
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
@@ -50,7 +55,7 @@ def register(payload: RegisterRequest) -> dict:
 
     try:
         create_user(name, email, password_hash)
-    except sqlite3.IntegrityError as exc:
+    except (sqlite3.IntegrityError, *PSYCOPG2_ERRORS) as exc:
         logger.info("Registration failed: duplicate email %s.", email)
         print("FAIL")
         raise HTTPException(
@@ -58,12 +63,21 @@ def register(payload: RegisterRequest) -> dict:
             detail="Email already registered",
         ) from exc
     except Exception as exc:
+        err_str = str(exc).lower()
+        if "unique" in err_str or "duplicate" in err_str or "already exists" in err_str:
+            logger.info("Registration failed: duplicate email %s.", email)
+            print("FAIL")
+            raise HTTPException(
+                status_code=400,
+                detail="Email already registered",
+            ) from exc
         logger.exception("Registration failed unexpectedly for %s.", email)
         print("FAIL")
         raise HTTPException(
             status_code=500,
             detail="Registration failed. Please try again.",
         ) from exc
+
 
     logger.info("Registration success: %s.", email)
     print("SUCCESS")

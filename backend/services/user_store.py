@@ -90,6 +90,7 @@ def create_user(name: str, email: str, password_hash: str) -> dict:
 
 def find_user_by_email(email: str) -> dict | None:
     init_user_database()
+    target_email = email.strip().lower()
     with get_db_connection("users.db") as (db_type, conn):
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -97,9 +98,9 @@ def find_user_by_email(email: str) -> dict | None:
                 """
                 SELECT id, name, email, password_hash, created_at
                 FROM users
-                WHERE email = %s
+                WHERE LOWER(email) = LOWER(%s)
                 """,
-                (email,),
+                (target_email,),
             )
             row = cursor.fetchone()
             return dict(row) if row else None
@@ -109,11 +110,12 @@ def find_user_by_email(email: str) -> dict | None:
                 """
                 SELECT id, name, email, password_hash, created_at
                 FROM users
-                WHERE email = ?
+                WHERE LOWER(email) = LOWER(?)
                 """,
-                (email,),
+                (target_email,),
             ).fetchone()
             return dict(row) if row else None
+
 
 
 def create_session(user_id: int) -> str:
