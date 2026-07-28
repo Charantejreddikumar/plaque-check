@@ -23,17 +23,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
   final ApiService _apiService = ApiService();
 
   Future<List<ScanReport>> _loadReports() async {
+    List<ScanReport> backendReports = [];
     try {
-      final backendReports = await _apiService.fetchReports();
-      if (backendReports.isNotEmpty) {
-        return backendReports;
-      }
-    } catch (_) {
-      // Local reports keep history usable when the backend is offline.
-    }
+      backendReports = await _apiService.fetchReports();
+    } catch (_) {}
 
     final values = await SessionManager.getReportsForCurrentUser();
-    return values
+    final localReports = values
         .map((value) {
           try {
             return ScanReport.fromLocalJson(jsonDecode(value));
@@ -43,7 +39,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
         })
         .whereType<ScanReport>()
         .toList();
+
+    final Map<String, ScanReport> uniqueReports = {};
+    for (final report in [...backendReports, ...localReports]) {
+      final key =
+          '${report.date.year}-${report.date.month}-${report.date.day}-${report.date.hour}-${report.date.minute}_${report.plaque}_${report.severity}';
+      if (!uniqueReports.containsKey(key)) {
+        uniqueReports[key] = report;
+      }
+    }
+
+    final combined = uniqueReports.values.toList();
+    combined.sort((a, b) => b.date.compareTo(a.date));
+
+    return combined;
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -122,7 +122,8 @@ class ApiService {
       final headers = await _authHeaders();
       final response = await _client
           .get(url, headers: headers)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 25));
+
 
       debugPrint('REPORTS RESPONSE STATUS: ${response.statusCode}');
       debugPrint('REPORTS RESPONSE: ${response.body}');

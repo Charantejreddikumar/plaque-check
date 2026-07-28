@@ -23,27 +23,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ApiService _apiService = ApiService();
 
   Future<List<_DashboardReport>> _loadReports() async {
+    List<ScanReport> backendReports = [];
     try {
-      final backendReports = await _apiService.fetchReports();
-      if (backendReports.isNotEmpty) {
-        return backendReports.map(_DashboardReport.fromScanReport).toList();
-      }
-    } catch (_) {
-      // Local reports keep the dashboard useful when the backend is offline.
-    }
+      backendReports = await _apiService.fetchReports();
+    } catch (_) {}
 
     final values = await SessionManager.getReportsForCurrentUser();
-    return values
+    final localReports = values
         .map((value) {
           try {
-            return _DashboardReport.fromJson(jsonDecode(value));
+            return ScanReport.fromLocalJson(jsonDecode(value));
           } catch (_) {
             return null;
           }
         })
-        .whereType<_DashboardReport>()
+        .whereType<ScanReport>()
         .toList();
+
+    final Map<String, ScanReport> uniqueReports = {};
+    for (final report in [...backendReports, ...localReports]) {
+      final key =
+          '${report.date.year}-${report.date.month}-${report.date.day}-${report.date.hour}-${report.date.minute}_${report.plaque}_${report.severity}';
+      if (!uniqueReports.containsKey(key)) {
+        uniqueReports[key] = report;
+      }
+    }
+
+    final combined = uniqueReports.values.toList();
+    combined.sort((a, b) => b.date.compareTo(a.date));
+
+    return combined.map(_DashboardReport.fromScanReport).toList();
   }
+
 
   Future<void> _openScan() async {
     await Navigator.pushNamed(context, '/scan-instructions');

@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/api_service.dart';
 import '../services/plaque_prediction.dart';
+import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -80,6 +83,25 @@ class _AnalysisScreenState extends State<AnalysisScreen>
       if (!mounted) {
         return;
       }
+      try {
+        final reportData = {
+          'imagePath': image.path,
+          'processedImage': prediction.processedImage,
+          'date': prediction.timestamp.toIso8601String(),
+          'plaque': prediction.plaquePercent,
+          'severity': prediction.severity,
+          'score': prediction.oralHealthScore,
+          'confidence': prediction.confidence,
+          'recommendation': prediction.recommendation,
+          'isDemo': false,
+        };
+        final existing = await SessionManager.getReportsForCurrentUser();
+        await SessionManager.saveReportsForCurrentUser([
+          jsonEncode(reportData),
+          ...existing,
+        ]);
+      } catch (_) {}
+
       Navigator.pushReplacementNamed(
         context,
         '/result',
@@ -89,6 +111,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         ),
       );
     } catch (error) {
+
       if (!mounted) {
         return;
       }
