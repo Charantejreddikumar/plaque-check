@@ -8,6 +8,7 @@ import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_glass_nav.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/side_glass_nav.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -80,11 +81,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 768;
+
     return FutureBuilder<List<_DashboardReport>>(
       future: _reportsFuture,
       builder: (context, snapshot) {
         final reports = snapshot.data ?? [];
         final latestReport = reports.isEmpty ? null : reports.first;
+
+        if (isDesktop) {
+          return Scaffold(
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: AppTheme.pageDecoration(context),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    SideGlassNavigation(
+                      selectedIndex: _selectedTabIndex,
+                      onTabSelected: _handleTabSelected,
+                    ),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.all(32),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 1100),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildHeaderProfile(reports),
+                                    const SizedBox(height: 24),
+                                    _buildOralScoreIndexCard(latestReport),
+                                    const SizedBox(height: 26),
+                                    _buildPrimaryScanCta(),
+                                    const SizedBox(height: 26),
+                                    _buildDiagnosticsAnalysisCard(latestReport),
+                                    const SizedBox(height: 24),
+                                    _buildWeeklyProgressionCard(reports),
+                                    const SizedBox(height: 24),
+                                    _buildAICoachCard(latestReport),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 32,
+                            right: 32,
+                            child: _FloatingScanButton(onTap: _openScan),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
 
         return Scaffold(
           body: Container(
