@@ -36,12 +36,18 @@ def test_clean_database_url_bracket_and_case_handling():
         cleaned = _get_clean_database_url()
         assert cleaned == "postgresql://postgres:Bunny_a2005%23@db.supabase.co:5432/postgres"
         assert get_db_type() == "postgres"
+
+        # Test password containing '@' and '#'
+        os.environ["DATABASE_URL"] = "postgresql://postgres:Bunny_@2005#@db.xksvrcqllfevtqndchml.supabase.co:5432/postgres"
+        cleaned_at = _get_clean_database_url()
+        assert cleaned_at == "postgresql://postgres:Bunny_%402005%23@db.xksvrcqllfevtqndchml.supabase.co:5432/postgres"
     finally:
         for k, v in orig_env.items():
             if v is None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
 
 
 

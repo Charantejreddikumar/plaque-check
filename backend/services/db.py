@@ -32,16 +32,17 @@ def _get_clean_database_url() -> str:
     # Remove literal brackets if password was entered as [your_password]
     url = re.sub(r":\[([^\]]+)\]@", r":\1@", url)
 
-    # Encode special characters in password (like '#') if not already encoded
-    match = re.match(r"^(postgresql://)([^:]+):([^@]+)@([^:/]+)(:\d+)?/(.+)$", url)
+    # Parse scheme, user, password (which may contain '@' or '#'), and host
+    pattern = r"^(postgresql://)([^:]+):(.*)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?::\d+)?(?:/.*)?)$"
+    match = re.match(pattern, url)
     if match:
-        scheme, user, pwd, host, port, dbname = match.groups()
-        port_str = port if port else ""
-        if "#" in pwd and "%23" not in pwd:
-            pwd = urllib.parse.quote(pwd, safe="")
-        url = f"{scheme}{user}:{pwd}@{host}{port_str}/{dbname}"
+        scheme, user, pwd, host_and_db = match.groups()
+        if "@" in pwd or "#" in pwd:
+            cleaned_pwd = urllib.parse.quote(pwd, safe="")
+            url = f"{scheme}{user}:{cleaned_pwd}@{host_and_db}"
 
     return url
+
 
 
 def get_db_type() -> str:
