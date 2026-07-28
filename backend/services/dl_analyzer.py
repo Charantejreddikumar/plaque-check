@@ -6,6 +6,7 @@ import numpy as np
 
 from services.analyzer import Analyzer
 from services.image_validator import validate_teeth_image
+from services.roi_cropper import extract_teeth_roi
 
 logger = logging.getLogger(__name__)
 MODELS_DIR = Path(__file__).resolve().parents[1] / "models"
@@ -63,11 +64,12 @@ class DLAnalyzer(Analyzer):
             raise ValueError("Please upload a clear image showing human teeth.")
 
         validate_teeth_image(image)
+        teeth_roi, _ = extract_teeth_roi(image)
 
         if self._session is not None:
-            return self._infer_onnx(image_path, image)
+            return self._infer_onnx(image_path, teeth_roi)
         elif self._pt_model is not None:
-            return self._infer_pytorch(image_path, image)
+            return self._infer_pytorch(image_path, teeth_roi)
 
         from services.opencv_analyzer import OpenCVAnalyzer
         return OpenCVAnalyzer().analyze(image_path)
@@ -83,9 +85,12 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        # If predicted class is 0 (Face / Non-teeth) or confidence is low, reject
+        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
+        # which accurately segment teeth plaque even when perioral skin/lips are present
         if predicted_class == 0 or confidence < 0.55:
-            raise ValueError("Please upload a clear close-up image showing human teeth, not a face or non-teeth photo.")
+            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
+            from services.opencv_analyzer import OpenCVAnalyzer
+            return OpenCVAnalyzer().analyze(image_path)
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
@@ -113,9 +118,12 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        # If predicted class is 0 (Face / Non-teeth) or confidence is low, reject
+        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
+        # which accurately segment teeth plaque even when perioral skin/lips are present
         if predicted_class == 0 or confidence < 0.55:
-            raise ValueError("Please upload a clear close-up image showing human teeth, not a face or non-teeth photo.")
+            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
+            from services.opencv_analyzer import OpenCVAnalyzer
+            return OpenCVAnalyzer().analyze(image_path)
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])

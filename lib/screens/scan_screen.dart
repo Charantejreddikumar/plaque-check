@@ -68,7 +68,7 @@ class _ScanScreenState extends State<ScanScreen> {
         children: [
           _Header(
             title: 'Multi-Angle Dental Scan',
-            subtitle: 'Take 1 to 3 photos from different angles (Front, Left, Right) for optimal plaque analysis.',
+            subtitle: 'Take 1 to 3 photos of your lower face (nose, mouth, chin, & teeth) from different angles for optimal plaque analysis.',
             onBack: () => Navigator.pop(context),
           ),
           const SizedBox(height: 24),

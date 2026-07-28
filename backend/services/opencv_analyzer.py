@@ -5,6 +5,7 @@ import numpy as np
 
 from services.analyzer import Analyzer
 from services.image_validator import validate_teeth_image
+from services.roi_cropper import extract_teeth_roi
 
 PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
@@ -15,10 +16,11 @@ class OpenCVAnalyzer(Analyzer):
         if image is None:
             raise ValueError("Please upload a clear image showing human teeth.")
 
-        # 1. Perform strict teeth image validation
+        # 1. Perform teeth image validation & automatic teeth ROI extraction
         validate_teeth_image(image)
+        teeth_roi, _ = extract_teeth_roi(image)
 
-        resized = _resize_for_analysis(image)
+        resized = _resize_for_analysis(teeth_roi)
 
         # 2. Contrast Limited Adaptive Histogram Equalization (CLAHE) in CIELAB
         lab = cv2.cvtColor(resized, cv2.COLOR_BGR2LAB)

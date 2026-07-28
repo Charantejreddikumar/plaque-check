@@ -231,23 +231,26 @@ class _AuthLogo extends StatelessWidget {
       child: Container(
         width: 74,
         height: 74,
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
-          ),
-          borderRadius: BorderRadius.circular(24),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF2B7A78).withValues(alpha: 0.18),
+              color: const Color(0xFF2B7A78).withValues(alpha: 0.22),
               blurRadius: 28,
               offset: const Offset(0, 12),
             ),
           ],
         ),
-        child: const Icon(
-          Icons.medical_information_outlined,
-          color: Colors.white,
-          size: 34,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.asset(
+            'assets/images/app_logo.png',
+            width: 62,
+            height: 62,
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );

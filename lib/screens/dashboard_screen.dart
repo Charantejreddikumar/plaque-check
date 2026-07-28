@@ -216,9 +216,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   height: 48,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF69C7C3), Color(0xFF69C7C3)],
+                      colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(17),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2B7A78).withValues(alpha: 0.22),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   alignment: Alignment.center,
                   child: _UserInitials(userFuture: _userFuture),
@@ -448,18 +457,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onTap: _openScan,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 22),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 22),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFF5FBFC), Color(0xFF69C7C3)],
+            colors: [Color(0xFF1E6B68), Color(0xFF2B7A78), Color(0xFF3BA7A4)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.32), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF69C7C3).withValues(alpha: 0.22),
-              blurRadius: 42,
-              offset: const Offset(0, 18),
+              color: const Color(0xFF2B7A78).withValues(alpha: 0.38),
+              blurRadius: 36,
+              offset: const Offset(0, 14),
             ),
           ],
         ),
@@ -478,7 +489,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 0.2,
+                letterSpacing: 0.3,
               ),
             ),
           ],
@@ -651,12 +662,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 42,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF3BA7A4), Color(0xFF3BA7A4)],
+                colors: [Color(0xFF2B7A78), Color(0xFF3BA7A4)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
             ),
-            child: const Icon(Icons.bolt, color: Color(0xFF69C7C3), size: 21),
+            child: const Icon(Icons.bolt, color: Colors.white, size: 21),
           ),
           const SizedBox(width: 16),
           Expanded(

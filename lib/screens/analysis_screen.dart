@@ -140,6 +140,10 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         ]);
       } catch (_) {}
 
+      if (!mounted) {
+        return;
+      }
+
       Navigator.pushReplacementNamed(
         context,
         '/result',

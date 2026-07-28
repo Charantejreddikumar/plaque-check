@@ -65,9 +65,9 @@ class ScanInstructionScreen extends StatelessWidget {
                 const SizedBox(height: 14),
                 _InstructionTile(
                   icon: Icons.sentiment_satisfied_alt_outlined,
-                  title: 'Show teeth clearly',
+                  title: 'Frame lower face & mouth',
                   detail:
-                      'Frame the mouth so visible plaque regions can be reviewed.',
+                      'Capture your lower face (nose, mouth, lips, chin, & teeth). Our AI automatically isolates your teeth for analysis.',
                 ),
                 const SizedBox(height: 14),
                 _InstructionTile(
