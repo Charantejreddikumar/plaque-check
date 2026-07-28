@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/plaque_prediction.dart';
 import '../services/report_exporter.dart';
+import '../services/report_sharer.dart';
 import '../services/session_manager.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/glass_button.dart';
 import '../widgets/glass_card.dart';
@@ -241,6 +243,18 @@ class ReportDetailScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _shareReport(BuildContext context) async {
+    await ReportSharer.shareReportData(
+      date: report.date,
+      plaquePercent: report.plaque,
+      severity: report.severity,
+      score: report.score,
+      confidence: report.confidence,
+      recommendation: report.recommendation,
+      localImagePath: report.imagePath,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return _MedicalPage(
@@ -357,10 +371,17 @@ class ReportDetailScreen extends StatelessWidget {
             isPrimary: true,
             onPressed: () => _downloadReport(context),
           ),
+          const SizedBox(height: 12),
+          GlassButton(
+            label: 'Share Report',
+            icon: Icons.share_rounded,
+            onPressed: () => _shareReport(context),
+          ),
         ],
       ),
     );
   }
+
 }
 
 class _ReportImage extends StatelessWidget {

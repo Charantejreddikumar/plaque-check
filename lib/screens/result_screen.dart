@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/plaque_prediction.dart';
 import '../services/report_exporter.dart';
+import '../services/report_sharer.dart';
 import '../services/session_manager.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/glass_button.dart';
 import '../widgets/glass_card.dart';
@@ -168,6 +170,22 @@ class ResultScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _shareReport(
+    BuildContext context,
+    AnalysisResultArguments result,
+  ) async {
+    await ReportSharer.shareReportData(
+      date: result.prediction.timestamp,
+      plaquePercent: result.prediction.plaquePercent,
+      severity: result.prediction.severity,
+      score: result.prediction.oralHealthScore,
+      confidence: result.prediction.confidence,
+      recommendation: result.prediction.recommendation,
+      localImagePath: result.image.path,
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final result =
@@ -240,10 +258,11 @@ class ResultScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           GlassButton(
-            label: 'Share',
-            icon: Icons.ios_share_outlined,
-            onPressed: () => _showPlaceholder(context, 'Report sharing'),
+            label: 'Share Report',
+            icon: Icons.share_rounded,
+            onPressed: () => _shareReport(context, result),
           ),
+
           const SizedBox(height: 12),
           GlassButton(
             label: 'Scan Again',
