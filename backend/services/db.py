@@ -45,6 +45,10 @@ def _get_clean_database_url() -> str:
 
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 def get_db_type() -> str:
     url = _get_clean_database_url()
     return "postgres" if url else "sqlite"
@@ -54,23 +58,30 @@ def get_db_type() -> str:
 def get_db_connection(db_name: str = "plaquecheck.db"):
     url = _get_clean_database_url()
     if url:
-        conn = psycopg2.connect(url)
         try:
-            yield ("postgres", conn)
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
-    else:
-        LOCAL_DB_DIR.mkdir(parents=True, exist_ok=True)
-        db_path = LOCAL_DB_DIR / db_name
-        conn = sqlite3.connect(db_path)
-        try:
-            yield ("sqlite", conn)
-            conn.commit()
-        finally:
-            conn.close()
+            conn = psycopg2.connect(url, connect_timeout=10)
+            try:
+                yield ("postgres", conn)
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
+            return
+        except (psycopg2.OperationalError, psycopg2.Error) as exc:
+            logger.warning(
+                "Postgres connection failed (%s). Falling back to SQLite.", exc
+            )
+
+    LOCAL_DB_DIR.mkdir(parents=True, exist_ok=True)
+    db_path = LOCAL_DB_DIR / db_name
+    conn = sqlite3.connect(db_path)
+    try:
+        yield ("sqlite", conn)
+        conn.commit()
+    finally:
+        conn.close()
+
 
 
