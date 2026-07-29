@@ -27,14 +27,14 @@ PT_EXPORT_PATH = MODELS_DIR / "plaque_model.pt"
 
 def _compute_label_from_annotation(lbl_path: Path) -> int:
     if not lbl_path.exists():
-        return 1  # Default to 0% plaque intraoral
+        return 0  # Default to 0% plaque
     try:
         lines = lbl_path.read_text().strip().splitlines()
     except Exception:
-        return 1
+        return 0
 
     if not lines:
-        return 1
+        return 0
 
     plaque_count = 0
     total_count = 0
@@ -50,16 +50,16 @@ def _compute_label_from_annotation(lbl_path: Path) -> int:
                 pass
 
     if total_count == 0 or plaque_count == 0:
-        return 1
+        return 0
 
     ratio = plaque_count / total_count
     if ratio < 0.20:
-        return 2  # Mild
+        return 1  # 15% plaque
     if ratio < 0.45:
-        return 3  # Moderate
+        return 2  # 35% plaque
     if ratio < 0.70:
-        return 4  # High
-    return 5  # Severe
+        return 3  # 65% plaque
+    return 4  # 85% plaque
 
 
 class IntraoralPlaqueDataset(Dataset):
@@ -68,15 +68,7 @@ class IntraoralPlaqueDataset(Dataset):
         self.transform = transform
         self.samples = []
 
-        # 1. Load Face / Non-Teeth Negative Dataset (Class 0)
-        non_teeth_dirs = [data_dir / "non_teeth", data_dir / "face", data_dir / "faces"]
-        for nt_dir in non_teeth_dirs:
-            if nt_dir.exists():
-                for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.PNG"]:
-                    for img_path in nt_dir.glob(ext):
-                        self.samples.append((img_path, 0))
-
-        # 2. Search for Mendeley intraoral data structure (data/images and data/labels) -> Classes 1-5
+        # Search for Mendeley intraoral data structure (data/images and data/labels) -> Classes 0-4
         found_images = list(data_dir.glob("**/data/images"))
         found_labels = list(data_dir.glob("**/data/labels"))
 
@@ -101,18 +93,18 @@ class IntraoralPlaqueDataset(Dataset):
                             label = _compute_label_from_annotation(lbl_path)
                             self.samples.append((img_path, label))
 
-        # 3. Directory-per-class fallback
+        # Directory-per-class fallback
         if len(self.samples) == 0:
             for class_dir in sorted(data_dir.glob("*")):
-                if class_dir.is_dir() and class_dir.name not in ["non_teeth", "face"]:
+                if class_dir.is_dir():
                     label_str = class_dir.name.split("-")[0]
                     if label_str.isdigit():
-                        label = min(int(label_str) + 1, 5)
+                        label = min(max(int(label_str), 0), 4)
                         for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.PNG"]:
                             for img_path in class_dir.glob(ext):
                                 self.samples.append((img_path, label))
 
-        print(f"--> Total dataset samples (Intraoral + Face Negative): {len(self.samples)}")
+        print(f"--> Total intraoral dataset samples: {len(self.samples)}")
 
     def __len__(self):
         return len(self.samples)
@@ -148,7 +140,7 @@ def get_data_transforms():
     return train_transform, val_transform
 
 
-def build_model(num_classes: int = 6):
+def build_model(num_classes: int = 5):
     model = models.mobilenet_v3_large(weights=models.MobileNet_V3_Large_Weights.DEFAULT)
     in_features = model.classifier[3].in_features
     model.classifier[3] = nn.Linear(in_features, num_classes)

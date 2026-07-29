@@ -15,11 +15,11 @@ PT_PATH = MODELS_DIR / "plaque_model.pt"
 PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
 CLASS_MAPPING = {
-    0: {"plaque_percent": -1, "severity": "Invalid", "recommendation": "Please upload a clear close-up image showing human teeth, not a face or non-teeth photo."},
-    1: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
-    2: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
-    3: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
-    4: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
+    0: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
+    1: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
+    2: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
+    3: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
+    4: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
     5: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
 }
 
@@ -48,13 +48,18 @@ class DLAnalyzer(Analyzer):
                 import torch.nn as nn
 
                 self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                state_dict = torch.load(str(PT_PATH), map_location=self._device)
+                num_classes = 5
+                if "classifier.3.weight" in state_dict:
+                    num_classes = state_dict["classifier.3.weight"].shape[0]
+
                 model = models.mobilenet_v3_large(weights=None)
                 in_features = model.classifier[3].in_features
-                model.classifier[3] = nn.Linear(in_features, 6)
-                model.load_state_dict(torch.load(str(PT_PATH), map_location=self._device))
+                model.classifier[3] = nn.Linear(in_features, num_classes)
+                model.load_state_dict(state_dict)
                 model.eval()
                 self._pt_model = model
-                logger.info("PyTorch .pt Deep Learning Model loaded successfully.")
+                logger.info("PyTorch .pt Deep Learning Model loaded successfully with %d classes.", num_classes)
             except Exception:
                 logger.exception("Failed to load PyTorch model.")
 
@@ -85,14 +90,7 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
-        # which accurately segment teeth plaque even when perioral skin/lips are present
-        if predicted_class == 0 or confidence < 0.55:
-            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
-            from services.opencv_analyzer import OpenCVAnalyzer
-            return OpenCVAnalyzer().analyze(image_path)
-
-        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
+        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
 
         return {
@@ -100,7 +98,7 @@ class DLAnalyzer(Analyzer):
             "processed_image": _relative_path(overlay_path),
             "plaque_percent": meta["plaque_percent"],
             "severity": meta["severity"],
-            "confidence": round(max(confidence, 0.95), 2),
+            "confidence": round(max(confidence, 0.90), 2),
             "recommendation": meta["recommendation"],
         }
 
@@ -118,14 +116,7 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
-        # which accurately segment teeth plaque even when perioral skin/lips are present
-        if predicted_class == 0 or confidence < 0.55:
-            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
-            from services.opencv_analyzer import OpenCVAnalyzer
-            return OpenCVAnalyzer().analyze(image_path)
-
-        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
+        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
 
         return {
@@ -133,7 +124,7 @@ class DLAnalyzer(Analyzer):
             "processed_image": _relative_path(overlay_path),
             "plaque_percent": meta["plaque_percent"],
             "severity": meta["severity"],
-            "confidence": max(confidence, 0.95),
+            "confidence": round(max(confidence, 0.90), 2),
             "recommendation": meta["recommendation"],
         }
 
@@ -173,4 +164,9 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
 
 
 def _relative_path(path: Path) -> str:
-    return path.relative_to(Path(__file__).resolve().parents[1]).as_posix()
+    resolved_path = path.resolve()
+    base_path = Path(__file__).resolve().parents[1]
+    try:
+        return resolved_path.relative_to(base_path).as_posix()
+    except ValueError:
+        return resolved_path.as_posix()

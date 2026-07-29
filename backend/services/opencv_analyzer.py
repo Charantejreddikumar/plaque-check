@@ -77,9 +77,9 @@ def _resize_for_analysis(image: np.ndarray) -> np.ndarray:
 
 
 def _estimate_tooth_regions(hsv: np.ndarray) -> np.ndarray:
-    # Teeth enamel: Bright, low-to-moderate saturation
-    lower = np.array([0, 0, 105], dtype=np.uint8)
-    upper = np.array([179, 95, 255], dtype=np.uint8)
+    # Teeth enamel: Bright, low saturation (S <= 42, V >= 110) to exclude facial skin
+    lower = np.array([0, 0, 110], dtype=np.uint8)
+    upper = np.array([179, 42, 255], dtype=np.uint8)
     mask = cv2.inRange(hsv, lower, upper)
     kernel = np.ones((7, 7), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
@@ -187,4 +187,9 @@ def _recommendation_for(severity: str) -> str:
 
 
 def _relative_path(path: Path) -> str:
-    return path.relative_to(Path(__file__).resolve().parents[1]).as_posix()
+    resolved_path = path.resolve()
+    base_path = Path(__file__).resolve().parents[1]
+    try:
+        return resolved_path.relative_to(base_path).as_posix()
+    except ValueError:
+        return resolved_path.as_posix()

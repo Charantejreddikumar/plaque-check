@@ -14,6 +14,6 @@ def validate_teeth_image(image: np.ndarray) -> None:
     if height < 20 or width < 20:
         raise ValueError("Please upload a clear image showing human teeth.")
 
-    # Check for completely black / empty corrupt images
-    if float(np.mean(image)) < 2.0:
+    # Check for completely black / dark corrupt non-photo images
+    if float(np.mean(image)) < 15.0:
         raise ValueError("Please upload a clear image showing human teeth.")
