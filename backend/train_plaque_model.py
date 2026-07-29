@@ -145,15 +145,22 @@ def get_data_transforms():
 
 
 def build_model(num_classes: int = 5):
-    model = models.mobilenet_v3_large(weights=models.MobileNet_V3_Large_Weights.DEFAULT)
-    in_features = model.classifier[3].in_features
-    model.classifier[3] = nn.Linear(in_features, num_classes)
+    try:
+        model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
+        in_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(in_features, num_classes)
+        print("--> Loaded EfficientNet-B0 pretrained vision backbone.")
+    except Exception:
+        model = models.mobilenet_v3_large(weights=models.MobileNet_V3_Large_Weights.DEFAULT)
+        in_features = model.classifier[3].in_features
+        model.classifier[3] = nn.Linear(in_features, num_classes)
+        print("--> Loaded MobileNet-V3-Large fallback backbone.")
     return model
 
 
 def train_and_export(
     data_dir: Path = DATASET_DIR,
-    epochs: int = 5,
+    epochs: int = 3,
     batch_size: int = 32,
     lr: float = 1e-4,
 ):
@@ -168,6 +175,18 @@ def train_and_export(
         print(f"No dataset found in {data_dir}.")
         return
 
+    # Calculate class frequency weights for balanced training
+    labels = [s[1] for s in dataset.samples]
+    from collections import Counter
+    counts = Counter(labels)
+    total_samples = len(labels)
+    num_classes = 5
+    weights = [total_samples / max(counts.get(c, 1), 1) for c in range(num_classes)]
+    weights_tensor = torch.tensor(weights, dtype=torch.float32).to(device)
+    weights_tensor = weights_tensor / weights_tensor.sum() * num_classes
+    print(f"--> Class Frequencies: {counts}")
+    print(f"--> Computed Class Weights: {weights_tensor.cpu().numpy().round(3)}")
+
     train_size = int(0.85 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
@@ -176,7 +195,7 @@ def train_and_export(
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     model = build_model(num_classes=5).to(device)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=weights_tensor)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
 
     best_acc = 0.0
@@ -186,11 +205,11 @@ def train_and_export(
         model.train()
         running_loss = 0.0
 
-        for images, labels in train_loader:
-            images, labels = images.to(device), labels.to(device)
+        for images, labels_batch in train_loader:
+            images, labels_batch = images.to(device), labels_batch.to(device)
             optimizer.zero_grad()
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels_batch)
             loss.backward()
             optimizer.step()
             running_loss += loss.item() * images.size(0)
@@ -202,12 +221,12 @@ def train_and_export(
         correct = 0
         total = 0
         with torch.no_grad():
-            for images, labels in val_loader:
-                images, labels = images.to(device), labels.to(device)
+            for images, labels_batch in val_loader:
+                images, labels_batch = images.to(device), labels_batch.to(device)
                 outputs = model(images)
                 _, preds = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (preds == labels).sum().item()
+                total += labels_batch.size(0)
+                correct += (preds == labels_batch).sum().item()
 
         val_acc = correct / total if total > 0 else 0
         elapsed = time.time() - start_t

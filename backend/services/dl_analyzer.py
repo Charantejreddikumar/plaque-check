@@ -16,11 +16,10 @@ PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
 CLASS_MAPPING = {
     0: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
-    1: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
-    2: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
-    3: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
-    4: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
-    5: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
+    1: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
+    2: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
+    3: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
+    4: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
 }
 
 
@@ -49,13 +48,26 @@ class DLAnalyzer(Analyzer):
 
                 self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 state_dict = torch.load(str(PT_PATH), map_location=self._device)
-                num_classes = 6
-                if "classifier.3.weight" in state_dict:
+                
+                if "classifier.1.weight" in state_dict:
+                    num_classes = state_dict["classifier.1.weight"].shape[0]
+                    model = models.efficientnet_b0(weights=None)
+                    in_features = model.classifier[1].in_features
+                    model.classifier[1] = nn.Linear(in_features, num_classes)
+                elif "classifier.3.weight" in state_dict:
                     num_classes = state_dict["classifier.3.weight"].shape[0]
+                    model = models.mobilenet_v3_large(weights=None)
+                    in_features = model.classifier[3].in_features
+                    model.classifier[3] = nn.Linear(in_features, num_classes)
+                elif "fc.weight" in state_dict:
+                    num_classes = state_dict["fc.weight"].shape[0]
+                    model = models.resnet50(weights=None)
+                    in_features = model.fc.in_features
+                    model.fc = nn.Linear(in_features, num_classes)
+                else:
+                    num_classes = 5
+                    model = models.mobilenet_v3_large(weights=None)
 
-                model = models.mobilenet_v3_large(weights=None)
-                in_features = model.classifier[3].in_features
-                model.classifier[3] = nn.Linear(in_features, num_classes)
                 model.load_state_dict(state_dict)
                 model.eval()
                 self._pt_model = model
