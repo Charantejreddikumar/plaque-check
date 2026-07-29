@@ -67,8 +67,8 @@ class SettingsScreen extends StatelessWidget {
                       Divider(color: Colors.white24),
                       _SettingsTile(
                         icon: Icons.notifications_outlined,
-                        title: 'Notifications',
-                        detail: 'Reminder preferences placeholder',
+                        title: 'Notifications & Reminders',
+                        detail: 'Schedule daily, weekly or custom scan reminders',
                         routeName: '/scan-reminders',
                       ),
                       Divider(color: Colors.white24),
