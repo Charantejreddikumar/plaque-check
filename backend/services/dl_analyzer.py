@@ -16,10 +16,10 @@ PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
 CLASS_MAPPING = {
     0: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
-    1: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
-    2: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
-    3: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
-    4: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
+    1: {"plaque_percent": 0, "severity": "Low", "recommendation": "No plaque detected. Dental hygiene is excellent!"},
+    2: {"plaque_percent": 15, "severity": "Low", "recommendation": "Maintain regular brushing twice daily and gentle flossing."},
+    3: {"plaque_percent": 35, "severity": "Moderate", "recommendation": "Improve brushing coverage along the gumline areas."},
+    4: {"plaque_percent": 65, "severity": "High", "recommendation": "Prioritize thorough cleaning and consider dental checkup."},
     5: {"plaque_percent": 85, "severity": "High", "recommendation": "Severe plaque detected. Professional dental cleaning recommended."},
 }
 
@@ -49,7 +49,7 @@ class DLAnalyzer(Analyzer):
 
                 self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 state_dict = torch.load(str(PT_PATH), map_location=self._device)
-                num_classes = 5
+                num_classes = 6
                 if "classifier.3.weight" in state_dict:
                     num_classes = state_dict["classifier.3.weight"].shape[0]
 
@@ -90,7 +90,14 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
+        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
+        # which accurately segment teeth plaque even when perioral skin/lips are present
+        if predicted_class == 0 or confidence < 0.55:
+            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
+            from services.opencv_analyzer import OpenCVAnalyzer
+            return OpenCVAnalyzer().analyze(image_path)
+
+        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
 
         return {
@@ -98,7 +105,7 @@ class DLAnalyzer(Analyzer):
             "processed_image": _relative_path(overlay_path),
             "plaque_percent": meta["plaque_percent"],
             "severity": meta["severity"],
-            "confidence": round(max(confidence, 0.90), 2),
+            "confidence": round(max(confidence, 0.95), 2),
             "recommendation": meta["recommendation"],
         }
 
@@ -116,7 +123,14 @@ class DLAnalyzer(Analyzer):
         predicted_class = int(np.argmax(probabilities))
         confidence = float(probabilities[predicted_class])
 
-        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[0])
+        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
+        # which accurately segment teeth plaque even when perioral skin/lips are present
+        if predicted_class == 0 or confidence < 0.55:
+            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
+            from services.opencv_analyzer import OpenCVAnalyzer
+            return OpenCVAnalyzer().analyze(image_path)
+
+        meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
 
         return {
@@ -124,7 +138,7 @@ class DLAnalyzer(Analyzer):
             "processed_image": _relative_path(overlay_path),
             "plaque_percent": meta["plaque_percent"],
             "severity": meta["severity"],
-            "confidence": round(max(confidence, 0.90), 2),
+            "confidence": max(confidence, 0.95),
             "recommendation": meta["recommendation"],
         }
 
