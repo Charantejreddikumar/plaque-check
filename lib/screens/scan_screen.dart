@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'crop_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_button.dart';
 import '../widgets/glass_card.dart';
@@ -24,15 +25,32 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       final image = await _picker.pickImage(
         source: source,
-        imageQuality: 88,
-        maxWidth: 1600,
+        imageQuality: 92,
+        maxWidth: 1800,
       );
       if (image == null || !mounted) return;
 
+      final slotLabel = slot == 'front'
+          ? 'Front View (Center)'
+          : slot == 'left'
+              ? 'Left Angle View'
+              : 'Right Angle View';
+
+      final croppedResult = await Navigator.pushNamed(
+        context,
+        '/crop',
+        arguments: CropScreenArguments(
+          image: image,
+          label: slotLabel,
+        ),
+      );
+
+      final finalImage = (croppedResult is XFile) ? croppedResult : image;
+
       setState(() {
-        if (slot == 'front') _frontImage = image;
-        if (slot == 'left') _leftImage = image;
-        if (slot == 'right') _rightImage = image;
+        if (slot == 'front') _frontImage = finalImage;
+        if (slot == 'left') _leftImage = finalImage;
+        if (slot == 'right') _rightImage = finalImage;
       });
     } catch (_) {
       _showPickerMessage('Camera/Gallery access error. Please try again.');

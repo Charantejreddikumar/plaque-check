@@ -1,26 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'crop_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_button.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/platform_image.dart';
 
-class PreviewScreen extends StatelessWidget {
+class PreviewScreen extends StatefulWidget {
   const PreviewScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<PreviewScreen> createState() => _PreviewScreenState();
+}
+
+class _PreviewScreenState extends State<PreviewScreen> {
+  Map<String, XFile> _imagesMap = {};
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+
     final rawArg = ModalRoute.of(context)?.settings.arguments;
-
-    Map<String, XFile> imagesMap = {};
     if (rawArg is Map<String, XFile>) {
-      imagesMap = rawArg;
+      _imagesMap = Map<String, XFile>.from(rawArg);
     } else if (rawArg is XFile) {
-      imagesMap['Front View'] = rawArg;
+      _imagesMap['Front View'] = rawArg;
     }
+    _initialized = true;
+  }
 
-    final hasImages = imagesMap.isNotEmpty;
+  Future<void> _cropImageForSlot(String label, XFile file) async {
+    final croppedResult = await Navigator.pushNamed(
+      context,
+      '/crop',
+      arguments: CropScreenArguments(
+        image: file,
+        label: label,
+      ),
+    );
+
+    if (croppedResult is XFile && mounted) {
+      setState(() {
+        _imagesMap[label] = croppedResult;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImages = _imagesMap.isNotEmpty;
 
     return Scaffold(
       body: Container(
@@ -71,7 +102,7 @@ class PreviewScreen extends StatelessWidget {
                     ),
                   )
                 else
-                  ...imagesMap.entries.map((entry) {
+                  ..._imagesMap.entries.map((entry) {
                     final label = entry.key;
                     final file = entry.value;
                     return Padding(
@@ -92,17 +123,27 @@ class PreviewScreen extends StatelessWidget {
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
-                                  label,
-                                  style: TextStyle(
-                                    color: AppTheme.textPrimary(context),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary(context),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _cropImageForSlot(label, file),
+                                  icon: const Icon(Icons.crop, size: 16),
+                                  label: const Text('Crop Teeth'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF69C7C3),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(18),
                               child: AspectRatio(
@@ -120,7 +161,7 @@ class PreviewScreen extends StatelessWidget {
                   }),
                 const SizedBox(height: 16),
                 GlassButton(
-                  label: 'Analyze Scan (${imagesMap.length} Angle${imagesMap.length > 1 ? 's' : ''})',
+                  label: 'Analyze Scan (${_imagesMap.length} Angle${_imagesMap.length > 1 ? 's' : ''})',
                   icon: Icons.biotech_outlined,
                   isPrimary: true,
                   onPressed: !hasImages
@@ -128,7 +169,7 @@ class PreviewScreen extends StatelessWidget {
                       : () => Navigator.pushNamed(
                           context,
                           '/analysis',
-                          arguments: rawArg,
+                          arguments: _imagesMap,
                         ),
                 ),
                 const SizedBox(height: 12),

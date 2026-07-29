@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/analysis_screen.dart';
 import 'screens/comparison_screen.dart';
+import 'screens/crop_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/developer_settings_screen.dart';
 import 'screens/forgot_password_screen.dart';
@@ -56,6 +57,7 @@ class PlaqueCheckApp extends StatelessWidget {
             '/dashboard': (_) => const DashboardScreen(),
             '/scan-instructions': (_) => const ScanInstructionScreen(),
             '/scan': (_) => const ScanScreen(),
+            '/crop': (_) => const CropScreen(),
             '/preview': (_) => const PreviewScreen(),
             '/analysis': (_) => const AnalysisScreen(),
             '/result': (_) => const ResultScreen(),
