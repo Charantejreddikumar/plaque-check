@@ -50,7 +50,7 @@ def test_predict_valid_teeth_image():
     assert "plaque_percent" in data
     assert "severity" in data
     assert "report_id" in data
-    assert data["plaque_percent"] in [0, 15, 35, 65, 85]
+    assert 0 <= data["plaque_percent"] <= 100
     assert isinstance(data["severity"], str)
 
 def test_predict_non_teeth_image_rejected():

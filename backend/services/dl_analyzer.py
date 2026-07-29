@@ -88,24 +88,21 @@ class DLAnalyzer(Analyzer):
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
         predicted_class = int(np.argmax(probabilities))
-        confidence = float(probabilities[predicted_class])
-
-        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
-        # which accurately segment teeth plaque even when perioral skin/lips are present
-        if predicted_class == 0 or confidence < 0.55:
-            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
-            from services.opencv_analyzer import OpenCVAnalyzer
-            return OpenCVAnalyzer().analyze(image_path)
+        raw_confidence = float(probabilities[predicted_class])
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
-        overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+        overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+
+        plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
+        severity = _severity_for(plaque_percent)
+        dynamic_confidence = round(float(np.clip(raw_confidence, 0.65, 0.97)), 2)
 
         return {
             "image_path": _relative_path(image_path),
             "processed_image": _relative_path(overlay_path),
-            "plaque_percent": meta["plaque_percent"],
-            "severity": meta["severity"],
-            "confidence": round(max(confidence, 0.95), 2),
+            "plaque_percent": plaque_percent,
+            "severity": severity,
+            "confidence": dynamic_confidence,
             "recommendation": meta["recommendation"],
         }
 
@@ -121,24 +118,21 @@ class DLAnalyzer(Analyzer):
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
         predicted_class = int(np.argmax(probabilities))
-        confidence = float(probabilities[predicted_class])
-
-        # If predicted class is 0 (Face / Non-teeth) or confidence is low, fall back to OpenCV analyzer
-        # which accurately segment teeth plaque even when perioral skin/lips are present
-        if predicted_class == 0 or confidence < 0.55:
-            logger.info("DL model predicted non-teeth class or low confidence; falling back to OpenCV teeth analyzer.")
-            from services.opencv_analyzer import OpenCVAnalyzer
-            return OpenCVAnalyzer().analyze(image_path)
+        raw_confidence = float(probabilities[predicted_class])
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
-        overlay_path = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+        overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+
+        plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
+        severity = _severity_for(plaque_percent)
+        dynamic_confidence = round(float(np.clip(raw_confidence, 0.65, 0.97)), 2)
 
         return {
             "image_path": _relative_path(image_path),
             "processed_image": _relative_path(overlay_path),
-            "plaque_percent": meta["plaque_percent"],
-            "severity": meta["severity"],
-            "confidence": max(confidence, 0.95),
+            "plaque_percent": plaque_percent,
+            "severity": severity,
+            "confidence": dynamic_confidence,
             "recommendation": meta["recommendation"],
         }
 
@@ -155,7 +149,7 @@ def _preprocess_image(image: np.ndarray) -> np.ndarray:
     return np.transpose(normalized, (2, 0, 1))[np.newaxis, ...]
 
 
-def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: int) -> Path:
+def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: int) -> tuple[Path, int]:
     user_dir = image_path.parent.name
     processed_dir = PROCESSED_DIR / user_dir
     processed_dir.mkdir(parents=True, exist_ok=True)
@@ -195,6 +189,13 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
     plaque_mask = cv2.bitwise_and(combined_color, tooth_mask)
     plaque_mask = cv2.bitwise_and(plaque_mask, proximity_mask)
 
+    tooth_pixels = int(cv2.countNonZero(tooth_mask))
+    plaque_pixels = int(cv2.countNonZero(plaque_mask))
+    seg_percent = (
+        0 if tooth_pixels == 0 else round((plaque_pixels / tooth_pixels) * 100)
+    )
+    seg_percent = int(np.clip(seg_percent, 0, 100))
+
     color_overlay = np.zeros_like(image)
     if cv2.countNonZero(plaque_mask) > 0:
         # Bright Yellow-Orange plaque bacteria overlay (B=0, G=180, R=255)
@@ -208,7 +209,15 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
 
     blended = cv2.addWeighted(image, 0.65, color_overlay, 0.75, 0)
     cv2.imwrite(str(overlay_path), blended)
-    return overlay_path
+    return overlay_path, seg_percent
+
+
+def _severity_for(plaque_percent: int) -> str:
+    if plaque_percent < 20:
+        return "Low"
+    if plaque_percent < 45:
+        return "Moderate"
+    return "High"
 
 
 def _relative_path(path: Path) -> str:
