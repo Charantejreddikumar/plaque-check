@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 
 import cv2
 import numpy as np
@@ -7,6 +8,7 @@ from services.analyzer import Analyzer
 from services.image_validator import validate_teeth_image
 from services.roi_cropper import extract_teeth_roi
 
+logger = logging.getLogger(__name__)
 PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
 
@@ -103,13 +105,13 @@ def _estimate_plaque_regions_hybrid(
     tooth_mask: np.ndarray,
     gum_mask: np.ndarray,
 ) -> np.ndarray:
-    # 1. CIELAB b* channel yellowing threshold (b* > 138 in OpenCV 8-bit scale)
+    # 1. CIELAB b* channel yellowing threshold (b* > 131 in OpenCV 8-bit scale)
     b_channel = lab[:, :, 2]
-    lab_yellow_mask = cv2.inRange(b_channel, 138, 255)
+    lab_yellow_mask = cv2.inRange(b_channel, 131, 255)
 
-    # 2. HSV Biofilm color range (Yellow/Orange hue 14-40, saturation >= 55)
-    yellow_lower = np.array([14, 55, 75], dtype=np.uint8)
-    yellow_upper = np.array([40, 255, 255], dtype=np.uint8)
+    # 2. HSV Biofilm color range (Yellow/Orange hue 10-45, saturation >= 22)
+    yellow_lower = np.array([10, 22, 60], dtype=np.uint8)
+    yellow_upper = np.array([45, 255, 255], dtype=np.uint8)
     hsv_yellow_mask = cv2.inRange(hsv, yellow_lower, yellow_upper)
 
     # Combine color evidence
@@ -146,6 +148,7 @@ def _save_visual_outputs(
     overlay_path = processed_dir / f"{stem}_overlay.png"
 
     color_overlay = np.zeros_like(image)
+    overlay = image.copy()
     if cv2.countNonZero(plaque_mask) > 0:
         # Bright Yellow-Orange plaque bacteria overlay (B=0, G=180, R=255)
         color_overlay[plaque_mask > 0] = (0, 180, 255)
@@ -154,12 +157,12 @@ def _save_visual_outputs(
         contours, _ = cv2.findContours(plaque_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(color_overlay, contours, -1, (0, 240, 255), 2)
 
-    # High-contrast blend so plaque clearly glows on teeth
-    blended = cv2.addWeighted(image, 0.65, color_overlay, 0.75, 0)
+        mask_bool = plaque_mask > 0
+        overlay[mask_bool] = cv2.addWeighted(image[mask_bool], 0.35, color_overlay[mask_bool], 0.65, 0)
 
     cv2.imwrite(str(original_path), image)
     cv2.imwrite(str(mask_path), plaque_mask)
-    cv2.imwrite(str(overlay_path), blended)
+    cv2.imwrite(str(overlay_path), overlay)
     return overlay_path
 
 

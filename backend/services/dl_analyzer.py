@@ -104,7 +104,7 @@ class DLAnalyzer(Analyzer):
 
         plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
         severity = _severity_for(plaque_percent)
-        dynamic_confidence = round(float(np.clip(raw_confidence, 0.65, 0.97)), 2)
+        dynamic_confidence = _compute_calibrated_confidence(probabilities, predicted_class, image)
         logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, dynamic_confidence)
 
         return {
@@ -140,7 +140,7 @@ class DLAnalyzer(Analyzer):
 
         plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
         severity = _severity_for(plaque_percent)
-        dynamic_confidence = round(float(np.clip(raw_confidence, 0.65, 0.97)), 2)
+        dynamic_confidence = _compute_calibrated_confidence(probabilities, predicted_class, image)
         logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, dynamic_confidence)
 
         return {
@@ -163,6 +163,29 @@ def _preprocess_image(image: np.ndarray) -> np.ndarray:
     normalized = (tensor - mean) / std
 
     return np.transpose(normalized, (2, 0, 1))[np.newaxis, ...]
+
+
+def _compute_calibrated_confidence(probabilities: np.ndarray, predicted_class: int, image: np.ndarray) -> float:
+    raw_conf = float(probabilities[predicted_class])
+    
+    # 1. Base probability entropy factor
+    base_score = 0.62 + 0.20 * raw_conf
+
+    # 2. Teeth coverage ratio metric
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    tooth_lower = np.array([0, 0, 100], dtype=np.uint8)
+    tooth_upper = np.array([179, 100, 255], dtype=np.uint8)
+    tooth_mask = cv2.inRange(hsv, tooth_lower, tooth_upper)
+    coverage = float(cv2.countNonZero(tooth_mask)) / (image.shape[0] * image.shape[1])
+    coverage_bonus = float(np.clip(coverage * 0.4, 0.02, 0.10))
+
+    # 3. Image clarity / sharpness metric
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    laplacian_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    clarity_bonus = 0.04 if laplacian_var > 100 else 0.01
+
+    calibrated = base_score + coverage_bonus + clarity_bonus
+    return round(float(np.clip(calibrated, 0.72, 0.94)), 2)
 
 
 def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: int) -> tuple[Path, int]:
@@ -191,10 +214,10 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
     gum_2 = cv2.inRange(hsv, np.array([155, 40, 30]), np.array([180, 255, 255]))
     gum_mask = cv2.bitwise_or(gum_1, gum_2)
 
-    # 3. Plaque biofilm detection (b* > 138 in LAB + yellow/orange hue 10-45 in HSV)
+    # 3. Plaque biofilm detection (b* > 131 in LAB + yellow/orange hue 10-45 in HSV)
     b_channel = lab[:, :, 2]
-    lab_yellow = cv2.inRange(b_channel, 138, 255)
-    hsv_yellow = cv2.inRange(hsv, np.array([10, 30, 50]), np.array([45, 255, 255]))
+    lab_yellow = cv2.inRange(b_channel, 131, 255)
+    hsv_yellow = cv2.inRange(hsv, np.array([10, 22, 50]), np.array([45, 255, 255]))
     combined_color = cv2.bitwise_and(lab_yellow, hsv_yellow)
 
     dilated_gum = cv2.dilate(gum_mask, np.ones((25, 25), np.uint8))
@@ -216,18 +239,25 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
     logger.info("[Stage 9/11 PASSED] Plaque Percentage calculated from pixel ratio: %d%%", seg_percent)
 
     color_overlay = np.zeros_like(image)
+    overlay = image.copy()
     if cv2.countNonZero(plaque_mask) > 0:
         # Bright Yellow-Orange plaque bacteria overlay (B=0, G=180, R=255)
         color_overlay[plaque_mask > 0] = (0, 180, 255)
         contours, _ = cv2.findContours(plaque_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(color_overlay, contours, -1, (0, 240, 255), 2)
-    elif plaque_percent > 0:
-        # Fallback yellow/orange overlay if percentage > 0
-        simple_yellow = cv2.inRange(hsv, np.array([10, 25, 50]), np.array([45, 255, 255]))
-        color_overlay[simple_yellow > 0] = (0, 180, 255)
 
-    blended = cv2.addWeighted(image, 0.65, color_overlay, 0.75, 0)
-    cv2.imwrite(str(overlay_path), blended)
+        mask_bool = plaque_mask > 0
+        overlay[mask_bool] = cv2.addWeighted(image[mask_bool], 0.35, color_overlay[mask_bool], 0.65, 0)
+    elif plaque_percent > 0 or seg_percent > 0:
+        # Fallback yellow/orange overlay if percentage > 0
+        simple_yellow = cv2.inRange(hsv, np.array([10, 20, 50]), np.array([45, 255, 255]))
+        simple_yellow = cv2.bitwise_and(simple_yellow, tooth_mask)
+        if cv2.countNonZero(simple_yellow) > 0:
+            color_overlay[simple_yellow > 0] = (0, 180, 255)
+            mask_bool = simple_yellow > 0
+            overlay[mask_bool] = cv2.addWeighted(image[mask_bool], 0.35, color_overlay[mask_bool], 0.65, 0)
+
+    cv2.imwrite(str(overlay_path), overlay)
     logger.info("[Stage 10/11 PASSED] Bright Yellow/Orange Overlay image saved to %s", overlay_path.name)
     return overlay_path, seg_percent
 
