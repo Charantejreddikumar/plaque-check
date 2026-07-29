@@ -1,5 +1,8 @@
+import logging
 import cv2
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def extract_teeth_roi(image: np.ndarray) -> tuple[np.ndarray, tuple[int, int, int, int]]:
@@ -7,6 +10,7 @@ def extract_teeth_roi(image: np.ndarray) -> tuple[np.ndarray, tuple[int, int, in
     Locates and crops the teeth & mouth region of interest (ROI) from a lower-face photo (nose to chin).
     Returns (cropped_roi, (x, y, w, h)). If teeth ROI is not distinctly isolated, returns the full image.
     """
+    logger.info("[Stage 2/11] Extracting teeth & oral cavity Region of Interest (ROI)...")
     if image is None or image.size == 0:
         return image, (0, 0, 0, 0)
 

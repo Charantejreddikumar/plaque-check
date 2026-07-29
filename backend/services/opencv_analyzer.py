@@ -12,30 +12,31 @@ PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
 class OpenCVAnalyzer(Analyzer):
     def analyze(self, image_path: Path) -> dict:
+        logger.info("=== Starting OpenCV Fallback Pipeline Execution for %s ===", image_path.name)
         image = cv2.imread(str(image_path))
         if image is None:
+            logger.error("[Stage 1 Failed] Unable to read image file: %s", image_path)
             raise ValueError("Please upload a clear image showing human teeth.")
 
-        # 1. Perform teeth image validation & automatic teeth ROI extraction
         validate_teeth_image(image)
-        teeth_roi, _ = extract_teeth_roi(image)
+        teeth_roi, roi_rect = extract_teeth_roi(image)
+        logger.info("[Stage 2/11 PASSED] Teeth ROI extracted: rect=%s, shape=%s", roi_rect, teeth_roi.shape)
 
         resized = _resize_for_analysis(teeth_roi)
+        logger.info("[Stage 3/11 PASSED] Resized image shape: %s", resized.shape)
 
-        # 2. Contrast Limited Adaptive Histogram Equalization (CLAHE) in CIELAB
         lab = cv2.cvtColor(resized, cv2.COLOR_BGR2LAB)
         clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
         lab[:, :, 0] = clahe.apply(lab[:, :, 0])
         enhanced_bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
         hsv = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2HSV)
 
-        # 3. Tooth & Oral Mucosa Masking
         tooth_mask = _estimate_tooth_regions(hsv)
         gum_mask = _estimate_gum_regions(hsv)
 
-        # 4. Plaque biofilm detection using CIELAB b* + HSV saturation + Gum Proximity
         plaque_mask = _estimate_plaque_regions_hybrid(lab, hsv, tooth_mask, gum_mask)
+        logger.info("[Stage 8/11 PASSED] OpenCV Plaque Mask generated: plaque_pixels=%d", cv2.countNonZero(plaque_mask))
+
         overlay_path = _save_visual_outputs(image_path, resized, plaque_mask)
 
         tooth_pixels = int(cv2.countNonZero(tooth_mask))
@@ -44,8 +45,8 @@ class OpenCVAnalyzer(Analyzer):
             0 if tooth_pixels == 0 else round((plaque_pixels / tooth_pixels) * 100)
         )
         plaque_percent = int(np.clip(plaque_percent, 0, 100))
+        logger.info("[Stage 9/11 PASSED] Plaque Percentage calculated from pixel ratio: %d%%", plaque_percent)
 
-        # False positive reduction: if plaque coverage is less than 3%, report 0% plaque
         if plaque_percent < 3:
             plaque_percent = 0
             severity = "Low"
@@ -55,6 +56,7 @@ class OpenCVAnalyzer(Analyzer):
             recommendation = _recommendation_for(severity)
 
         confidence = _confidence_for(tooth_pixels, resized.shape[0] * resized.shape[1])
+        logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, confidence)
 
         return {
             "image_path": _relative_path(image_path),

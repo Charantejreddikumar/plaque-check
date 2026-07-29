@@ -64,12 +64,15 @@ class DLAnalyzer(Analyzer):
                 logger.exception("Failed to load PyTorch model.")
 
     def analyze(self, image_path: Path) -> dict:
+        logger.info("=== Starting PlaqueCheck Pipeline Execution for %s ===", image_path.name)
         image = cv2.imread(str(image_path))
         if image is None:
+            logger.error("[Stage 1 Failed] Unable to read image file from path: %s", image_path)
             raise ValueError("Please upload a clear image showing human teeth.")
 
         validate_teeth_image(image)
-        teeth_roi, _ = extract_teeth_roi(image)
+        teeth_roi, roi_rect = extract_teeth_roi(image)
+        logger.info("[Stage 2/11 PASSED] Teeth ROI extracted: rect=%s, roi_shape=%s", roi_rect, teeth_roi.shape)
 
         if self._session is not None:
             return self._infer_onnx(image_path, teeth_roi)
@@ -81,14 +84,20 @@ class DLAnalyzer(Analyzer):
 
     def _infer_onnx(self, image_path: Path, image: np.ndarray) -> dict:
         nchw = _preprocess_image(image)
+        logger.info("[Stage 3/11 PASSED] Preprocessed tensor shape: %s", nchw.shape)
+
         input_name = self._session.get_inputs()[0].name
         outputs = self._session.run(None, {input_name: nchw})
         logits = outputs[0][0]
+        logger.info("[Stage 4/11 PASSED] ONNX Model Logits: %s", logits)
 
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
         predicted_class = int(np.argmax(probabilities))
         raw_confidence = float(probabilities[predicted_class])
+        logger.info("[Stage 5/11 PASSED] Softmax Probabilities: %s", np.round(probabilities, 4))
+        logger.info("[Stage 6/11 PASSED] Predicted Class: %d", predicted_class)
+        logger.info("[Stage 7/11 PASSED] Un-capped Softmax Confidence: %.4f", raw_confidence)
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
@@ -96,6 +105,7 @@ class DLAnalyzer(Analyzer):
         plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
         severity = _severity_for(plaque_percent)
         dynamic_confidence = round(float(np.clip(raw_confidence, 0.65, 0.97)), 2)
+        logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, dynamic_confidence)
 
         return {
             "image_path": _relative_path(image_path),
@@ -110,15 +120,20 @@ class DLAnalyzer(Analyzer):
         import torch
 
         nchw = _preprocess_image(image)
+        logger.info("[Stage 3/11 PASSED] Preprocessed PyTorch tensor shape: %s", nchw.shape)
         tensor_in = torch.from_numpy(nchw).to(self._device)
 
         with torch.no_grad():
             logits = self._pt_model(tensor_in)[0].cpu().numpy()
 
+        logger.info("[Stage 4/11 PASSED] PyTorch Model Logits: %s", logits)
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
         predicted_class = int(np.argmax(probabilities))
         raw_confidence = float(probabilities[predicted_class])
+        logger.info("[Stage 5/11 PASSED] Softmax Probabilities: %s", np.round(probabilities, 4))
+        logger.info("[Stage 6/11 PASSED] Predicted Class: %d", predicted_class)
+        logger.info("[Stage 7/11 PASSED] Un-capped Softmax Confidence: %.4f", raw_confidence)
 
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
         overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
@@ -126,6 +141,7 @@ class DLAnalyzer(Analyzer):
         plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
         severity = _severity_for(plaque_percent)
         dynamic_confidence = round(float(np.clip(raw_confidence, 0.65, 0.97)), 2)
+        logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, dynamic_confidence)
 
         return {
             "image_path": _relative_path(image_path),
@@ -196,6 +212,9 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
     )
     seg_percent = int(np.clip(seg_percent, 0, 100))
 
+    logger.info("[Stage 8/11 PASSED] OpenCV Plaque Mask generated: tooth_pixels=%d, plaque_pixels=%d", tooth_pixels, plaque_pixels)
+    logger.info("[Stage 9/11 PASSED] Plaque Percentage calculated from pixel ratio: %d%%", seg_percent)
+
     color_overlay = np.zeros_like(image)
     if cv2.countNonZero(plaque_mask) > 0:
         # Bright Yellow-Orange plaque bacteria overlay (B=0, G=180, R=255)
@@ -209,6 +228,7 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
 
     blended = cv2.addWeighted(image, 0.65, color_overlay, 0.75, 0)
     cv2.imwrite(str(overlay_path), blended)
+    logger.info("[Stage 10/11 PASSED] Bright Yellow/Orange Overlay image saved to %s", overlay_path.name)
     return overlay_path, seg_percent
 
 
