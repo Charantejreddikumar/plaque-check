@@ -71,21 +71,13 @@ class DLAnalyzer(Analyzer):
         validate_teeth_image(image)
         teeth_roi, _ = extract_teeth_roi(image)
 
-        from services.opencv_analyzer import OpenCVAnalyzer
-        cv_res = OpenCVAnalyzer().analyze(image_path)
-        if cv_res["plaque_percent"] > 0:
-            return cv_res
-
         if self._session is not None:
-            dl_res = self._infer_onnx(image_path, teeth_roi)
-            if dl_res["plaque_percent"] > 0:
-                return dl_res
+            return self._infer_onnx(image_path, teeth_roi)
         elif self._pt_model is not None:
-            dl_res = self._infer_pytorch(image_path, teeth_roi)
-            if dl_res["plaque_percent"] > 0:
-                return dl_res
+            return self._infer_pytorch(image_path, teeth_roi)
 
-        return cv_res
+        from services.opencv_analyzer import OpenCVAnalyzer
+        return OpenCVAnalyzer().analyze(image_path)
 
     def _infer_onnx(self, image_path: Path, image: np.ndarray) -> dict:
         nchw = _preprocess_image(image)
