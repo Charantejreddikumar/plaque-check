@@ -31,7 +31,7 @@ class OpenCVAnalyzer(Analyzer):
         hsv = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2HSV)
 
         # 3. Tooth & Oral Mucosa Masking
-        tooth_mask = _estimate_tooth_regions(hsv)
+        tooth_mask = _estimate_tooth_regions(hsv, lab)
         gum_mask = _estimate_gum_regions(hsv)
 
         # 4. Plaque biofilm detection using CIELAB b* + HSV saturation + Gum Proximity
@@ -76,11 +76,12 @@ def _resize_for_analysis(image: np.ndarray) -> np.ndarray:
     return cv2.resize(image, (max_width, int(height * scale)), interpolation=cv2.INTER_AREA)
 
 
-def _estimate_tooth_regions(hsv: np.ndarray) -> np.ndarray:
-    # Teeth enamel: Bright, low saturation (S <= 42, V >= 110) to exclude facial skin
-    lower = np.array([0, 0, 110], dtype=np.uint8)
-    upper = np.array([179, 42, 255], dtype=np.uint8)
-    mask = cv2.inRange(hsv, lower, upper)
+def _estimate_tooth_regions(hsv: np.ndarray, lab: np.ndarray) -> np.ndarray:
+    # Teeth enamel and plaque are bright (V >= 90) and neutral/non-red (LAB a* <= 140)
+    hsv_mask = cv2.inRange(hsv, np.array([0, 0, 90], dtype=np.uint8), np.array([179, 255, 255], dtype=np.uint8))
+    a_channel = lab[:, :, 1]
+    not_skin = cv2.inRange(a_channel, 0, 140)
+    mask = cv2.bitwise_and(hsv_mask, not_skin)
     kernel = np.ones((7, 7), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     return cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
@@ -101,30 +102,20 @@ def _estimate_plaque_regions_hybrid(
     tooth_mask: np.ndarray,
     gum_mask: np.ndarray,
 ) -> np.ndarray:
-    # 1. CIELAB b* channel yellowing threshold (b* > 138 in OpenCV 8-bit scale)
+    # 1. CIELAB b* channel yellowing threshold (b* >= 148 for yellow plaque/biofilm)
     b_channel = lab[:, :, 2]
-    lab_yellow_mask = cv2.inRange(b_channel, 138, 255)
+    lab_yellow_mask = cv2.inRange(b_channel, 148, 255)
 
-    # 2. HSV Biofilm color range (Yellow/Orange hue 14-40, saturation >= 55)
-    yellow_lower = np.array([14, 55, 75], dtype=np.uint8)
-    yellow_upper = np.array([40, 255, 255], dtype=np.uint8)
+    # 2. HSV Biofilm color range (Yellow/Orange/Cream hue 10-45, saturation >= 25)
+    yellow_lower = np.array([10, 25, 60], dtype=np.uint8)
+    yellow_upper = np.array([45, 255, 255], dtype=np.uint8)
     hsv_yellow_mask = cv2.inRange(hsv, yellow_lower, yellow_upper)
 
     # Combine color evidence
     combined_color = cv2.bitwise_and(lab_yellow_mask, hsv_yellow_mask)
 
-    # 3. Gingival Margin Proximity (plaque accumulates near gumline / interdental edges)
-    dilated_gum = cv2.dilate(gum_mask, np.ones((25, 25), np.uint8))
-    
-    # Interdental edges using Laplacian on teeth
-    edges = cv2.Canny(hsv[:, :, 2], 50, 150)
-    dilated_edges = cv2.dilate(edges, np.ones((7, 7), np.uint8))
-
-    proximity_mask = cv2.bitwise_or(dilated_gum, dilated_edges)
-
-    # Plaque must be on teeth AND (near gumline OR along interdental edges)
+    # Plaque must be on teeth region
     plaque_mask = cv2.bitwise_and(combined_color, tooth_mask)
-    plaque_mask = cv2.bitwise_and(plaque_mask, proximity_mask)
 
     kernel = np.ones((5, 5), np.uint8)
     return cv2.morphologyEx(plaque_mask, cv2.MORPH_OPEN, kernel)
