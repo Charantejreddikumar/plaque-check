@@ -165,14 +165,48 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
 
     cv2.imwrite(str(original_path), image)
 
-    blended = image.copy()
-    if plaque_percent > 0:
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        yellow_mask = cv2.inRange(hsv, np.array([14, 50, 70]), np.array([40, 255, 255]))
-        color_overlay = np.zeros_like(image)
-        color_overlay[yellow_mask > 0] = (0, 72, 255)
-        blended = cv2.addWeighted(image, 0.76, color_overlay, 0.42, 0)
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+    lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+    enhanced_bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    hsv = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2HSV)
 
+    # 1. Tooth enamel region mask (bright, low-to-moderate saturation)
+    tooth_lower = np.array([0, 0, 100], dtype=np.uint8)
+    tooth_upper = np.array([179, 100, 255], dtype=np.uint8)
+    tooth_mask = cv2.inRange(hsv, tooth_lower, tooth_upper)
+
+    # 2. Oral mucosa / gum mask
+    gum_1 = cv2.inRange(hsv, np.array([0, 40, 30]), np.array([25, 255, 255]))
+    gum_2 = cv2.inRange(hsv, np.array([155, 40, 30]), np.array([180, 255, 255]))
+    gum_mask = cv2.bitwise_or(gum_1, gum_2)
+
+    # 3. Plaque biofilm detection (b* > 138 in LAB + yellow/orange hue 10-45 in HSV)
+    b_channel = lab[:, :, 2]
+    lab_yellow = cv2.inRange(b_channel, 138, 255)
+    hsv_yellow = cv2.inRange(hsv, np.array([10, 30, 50]), np.array([45, 255, 255]))
+    combined_color = cv2.bitwise_and(lab_yellow, hsv_yellow)
+
+    dilated_gum = cv2.dilate(gum_mask, np.ones((25, 25), np.uint8))
+    edges = cv2.Canny(hsv[:, :, 2], 50, 150)
+    dilated_edges = cv2.dilate(edges, np.ones((7, 7), np.uint8))
+    proximity_mask = cv2.bitwise_or(dilated_gum, dilated_edges)
+
+    plaque_mask = cv2.bitwise_and(combined_color, tooth_mask)
+    plaque_mask = cv2.bitwise_and(plaque_mask, proximity_mask)
+
+    color_overlay = np.zeros_like(image)
+    if cv2.countNonZero(plaque_mask) > 0:
+        # Bright Yellow-Orange plaque bacteria overlay (B=0, G=180, R=255)
+        color_overlay[plaque_mask > 0] = (0, 180, 255)
+        contours, _ = cv2.findContours(plaque_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(color_overlay, contours, -1, (0, 240, 255), 2)
+    elif plaque_percent > 0:
+        # Fallback yellow/orange overlay if percentage > 0
+        simple_yellow = cv2.inRange(hsv, np.array([10, 25, 50]), np.array([45, 255, 255]))
+        color_overlay[simple_yellow > 0] = (0, 180, 255)
+
+    blended = cv2.addWeighted(image, 0.65, color_overlay, 0.75, 0)
     cv2.imwrite(str(overlay_path), blended)
     return overlay_path
 

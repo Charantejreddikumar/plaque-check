@@ -144,8 +144,16 @@ def _save_visual_outputs(
     overlay_path = processed_dir / f"{stem}_overlay.png"
 
     color_overlay = np.zeros_like(image)
-    color_overlay[plaque_mask > 0] = (0, 72, 255)
-    blended = cv2.addWeighted(image, 0.76, color_overlay, 0.42, 0)
+    if cv2.countNonZero(plaque_mask) > 0:
+        # Bright Yellow-Orange plaque bacteria overlay (B=0, G=180, R=255)
+        color_overlay[plaque_mask > 0] = (0, 180, 255)
+
+        # Highlight plaque edge contours in vivid neon yellow (B=0, G=240, R=255)
+        contours, _ = cv2.findContours(plaque_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(color_overlay, contours, -1, (0, 240, 255), 2)
+
+    # High-contrast blend so plaque clearly glows on teeth
+    blended = cv2.addWeighted(image, 0.65, color_overlay, 0.75, 0)
 
     cv2.imwrite(str(original_path), image)
     cv2.imwrite(str(mask_path), plaque_mask)
