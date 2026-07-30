@@ -8,6 +8,7 @@ from services.report_store import get_report_by_id, list_all_reports, list_pendi
 from services.user_store import (
     create_notification,
     get_patient_profile,
+    get_user_notifications,
     list_users,
     log_audit_event,
 )
@@ -204,6 +205,13 @@ def get_patient_detail(
     return {
         "patient": matched,
         "profile": profile,
-        "medical_history": profile.get("medical_history", "No prior periodontal surgeries reported. Routine hygiene visits."),
+        "medical_history": profile.get("medical_history", ""),
         "scan_history": patient_reports,
     }
+
+
+@router.get("/notifications")
+def get_doctor_notifications(
+    user: dict = Depends(require_role(["doctor", "administrator"])),
+) -> list[dict]:
+    return get_user_notifications(user["id"])

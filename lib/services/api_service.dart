@@ -320,6 +320,18 @@ class ApiService {
     return body;
   }
 
+  Future<List<dynamic>> fetchDoctorNotifications() async {
+    final url = Uri.parse('$_baseUrl/doctor/notifications');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
   Future<Map<String, dynamic>> fetchAdminDashboard() async {
     final url = Uri.parse('$_baseUrl/admin/dashboard');
     final headers = await _authHeaders();

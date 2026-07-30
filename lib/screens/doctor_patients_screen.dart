@@ -143,7 +143,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           borderRadius: 20,
                           child: Center(
                             child: Text(
-                              'No patient reports available.',
+                              'No patients available.',
                               style: TextStyle(
                                 color: AppTheme.textPrimary(context),
                                 fontWeight: FontWeight.bold,
