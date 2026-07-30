@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timezone
 import sqlite3
@@ -7,6 +8,7 @@ from passlib.context import CryptContext
 
 from services.db import get_db_connection
 
+logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -364,6 +366,7 @@ def find_patient_user_by_email(email: str) -> dict | None:
     init_user_database()
     target = email.strip().lower()
     with get_db_connection("users.db") as (db_type, conn):
+        logger.info("[DB LOGIN QUERY] Querying patient_users table for email: %s (DB: %s)", target, db_type)
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM patient_users WHERE LOWER(email) = LOWER(%s)", (target,))
@@ -387,6 +390,7 @@ def find_doctor_user_by_email(email: str) -> dict | None:
     init_user_database()
     target = email.strip().lower()
     with get_db_connection("users.db") as (db_type, conn):
+        logger.info("[DB LOGIN QUERY] Querying doctor_users table for email: %s (DB: %s)", target, db_type)
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM doctor_users WHERE LOWER(email) = LOWER(%s)", (target,))
@@ -410,6 +414,7 @@ def find_admin_user_by_email(email: str) -> dict | None:
     init_user_database()
     target = email.strip().lower()
     with get_db_connection("users.db") as (db_type, conn):
+        logger.info("[DB LOGIN QUERY] Querying admin_users table for email: %s (DB: %s)", target, db_type)
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM admin_users WHERE LOWER(email) = LOWER(%s)", (target,))
@@ -455,6 +460,7 @@ def create_user(name: str, email: str, password_hash: str, role: str = "patient"
         else:
             table_name = "admin_users"
 
+        logger.info("[DB INSERT ATTEMPT] Inserting user into %s for email: %s (DB: %s)", table_name, email, db_type)
         if db_type == "postgres":
             cursor.execute(
                 f"INSERT INTO {table_name} (name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
@@ -478,6 +484,8 @@ def create_user(name: str, email: str, password_hash: str, role: str = "patient"
 
         if role == "patient":
             _init_patient_profile(cursor, db_type, user_id, created_at)
+
+        logger.info("[DB INSERT SUCCESS] Successfully inserted user ID %s into %s (DB: %s)", user_id, table_name, db_type)
 
     return {
         "id": user_id,
@@ -527,6 +535,7 @@ def create_doctor(
                 (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, created_at),
             )
             doc_id = cursor.lastrowid
+        logger.info("[DB INSERT SUCCESS] Successfully inserted doctor details for user_id %s into doctors table (doctor_id: %s, DB: %s)", user_id, doc_id, db_type)
     return {"doctor_id": doc_id, "user_id": user_id, "approval_status": "pending_approval"}
 
 

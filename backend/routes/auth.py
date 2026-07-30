@@ -61,6 +61,7 @@ class LoginRequest(BaseModel):
 def register(payload: RegisterRequest) -> dict:
     email = payload.email.strip().lower()
     name = payload.name.strip()
+    logger.info("[REGISTER REQUEST] Patient registration request for: %s", email)
 
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
@@ -74,6 +75,7 @@ def register(payload: RegisterRequest) -> dict:
 
     # Check cross-role collision
     if find_user_by_email(email):
+        logger.warning("[AUTH FAILURE] Registration failed: Email %s already registered across roles", email)
         raise HTTPException(status_code=400, detail="Email already registered")
 
     password_hash = password_context.hash(payload.password)
@@ -82,6 +84,7 @@ def register(payload: RegisterRequest) -> dict:
         user = create_user(name, email, password_hash, role="patient", status="active")
         log_audit_event(user["id"], "REGISTER_PATIENT", f"Patient registered: {email}")
     except (sqlite3.IntegrityError, *PSYCOPG2_ERRORS) as exc:
+        logger.warning("[AUTH FAILURE] Registration integrity error for %s: %s", email, exc)
         raise HTTPException(
             status_code=400,
             detail="Email already registered",
@@ -99,7 +102,7 @@ def register(payload: RegisterRequest) -> dict:
             detail="Registration failed. Please try again.",
         ) from exc
 
-    logger.info("Patient registration success: %s.", email)
+    logger.info("[AUTH SUCCESS] Patient registration success for email: %s (User ID: %s)", email, user["id"])
     return {"success": True, "message": "Account created successfully"}
 
 
@@ -107,6 +110,7 @@ def register(payload: RegisterRequest) -> dict:
 def register_doctor(payload: DoctorRegisterRequest) -> dict:
     email = payload.email.strip().lower()
     name = payload.name.strip()
+    logger.info("[REGISTER REQUEST] Doctor registration request for: %s", email)
 
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
@@ -119,6 +123,7 @@ def register_doctor(payload: DoctorRegisterRequest) -> dict:
 
     # Check cross-role collision
     if find_user_by_email(email):
+        logger.warning("[AUTH FAILURE] Doctor registration failed: Email %s already registered across roles", email)
         raise HTTPException(status_code=400, detail="Email already registered")
 
     password_hash = password_context.hash(payload.password)
@@ -143,7 +148,7 @@ def register_doctor(payload: DoctorRegisterRequest) -> dict:
             raise HTTPException(status_code=400, detail="Email already registered") from exc
         raise HTTPException(status_code=500, detail="Doctor registration failed.") from exc
 
-    logger.info("Doctor registration submitted: %s (Pending Approval)", email)
+    logger.info("[AUTH SUCCESS] Doctor registration submitted for email: %s (User ID: %s, Pending Approval)", email, user["id"])
     return {
         "success": True,
         "message": "Doctor registration submitted successfully! Your account is pending Administrator approval.",
@@ -165,22 +170,27 @@ def login(payload: LoginRequest) -> dict:
 @router.post("/patient/login")
 def patient_login(payload: LoginRequest) -> dict:
     email = payload.email.strip().lower()
+    logger.info("[LOGIN REQUEST] Patient login attempt for email: %s", email)
     user = find_patient_user_by_email(email)
 
     if user is None:
-        # Check if registered under a different role
         if find_doctor_user_by_email(email) or find_admin_user_by_email(email):
+            logger.warning("[AUTH FAILURE] Patient login rejected: Email %s belongs to a different role", email)
             raise HTTPException(status_code=403, detail="This account is not registered as a patient.")
+        logger.warning("[AUTH FAILURE] Patient login failed: Email %s not found in patient_users", email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not password_context.verify(payload.password, user["password_hash"]):
+        logger.warning("[AUTH FAILURE] Patient login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if user["status"] == "deactivated":
+        logger.warning("[AUTH FAILURE] Patient login rejected: Account %s is deactivated", email)
         raise HTTPException(status_code=403, detail="Account deactivated. Please contact Administrator.")
 
     token = create_session(user["id"])
     log_audit_event(user["id"], "LOGIN", f"Patient logged in: {email}")
+    logger.info("[AUTH SUCCESS] Patient authenticated successfully: %s (User ID: %s)", email, user["id"])
 
     return {
         "success": True,
@@ -197,20 +207,26 @@ def patient_login(payload: LoginRequest) -> dict:
 @router.post("/doctor/login")
 def doctor_login(payload: LoginRequest) -> dict:
     email = payload.email.strip().lower()
+    logger.info("[LOGIN REQUEST] Doctor login attempt for email: %s", email)
     user = find_doctor_user_by_email(email)
 
     if user is None:
         if find_patient_user_by_email(email) or find_admin_user_by_email(email):
+            logger.warning("[AUTH FAILURE] Doctor login rejected: Email %s belongs to a different role", email)
             raise HTTPException(status_code=403, detail="This account is not registered as a doctor.")
+        logger.warning("[AUTH FAILURE] Doctor login failed: Email %s not found in doctor_users", email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not password_context.verify(payload.password, user["password_hash"]):
+        logger.warning("[AUTH FAILURE] Doctor login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if user["status"] == "deactivated":
+        logger.warning("[AUTH FAILURE] Doctor login rejected: Account %s is deactivated", email)
         raise HTTPException(status_code=403, detail="Account deactivated. Please contact Administrator.")
 
     if user["status"] == "pending_approval":
+        logger.warning("[AUTH FAILURE] Doctor login rejected: Account %s is pending administrator approval", email)
         raise HTTPException(
             status_code=403,
             detail="Your Doctor account registration is pending Administrator approval. You will receive access once verified.",
@@ -218,6 +234,7 @@ def doctor_login(payload: LoginRequest) -> dict:
 
     token = create_session(user["id"])
     log_audit_event(user["id"], "LOGIN", f"Doctor logged in: {email}")
+    logger.info("[AUTH SUCCESS] Doctor authenticated successfully: %s (User ID: %s)", email, user["id"])
 
     return {
         "success": True,
@@ -234,16 +251,20 @@ def doctor_login(payload: LoginRequest) -> dict:
 @router.post("/admin/login")
 def admin_login(payload: LoginRequest) -> dict:
     email = payload.email.strip().lower()
+    logger.info("[LOGIN REQUEST] Admin login attempt for email: %s", email)
     user = find_admin_user_by_email(email)
 
     if user is None:
+        logger.warning("[AUTH FAILURE] Admin login failed: Email %s not found in admin_users", email)
         raise HTTPException(status_code=403, detail="This account is not authorized as an Administrator.")
 
     if not password_context.verify(payload.password, user["password_hash"]):
+        logger.warning("[AUTH FAILURE] Admin login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_session(user["id"])
     log_audit_event(user["id"], "LOGIN", f"Admin logged in: {email}")
+    logger.info("[AUTH SUCCESS] Admin authenticated successfully: %s (User ID: %s)", email, user["id"])
 
     return {
         "success": True,

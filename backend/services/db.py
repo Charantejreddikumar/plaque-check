@@ -66,11 +66,13 @@ def get_db_connection(db_name: str = "plaquecheck.db"):
         try:
             conn = psycopg2.connect(url, connect_timeout=10)
             conn.autocommit = False
+            # Extract hostname for clean logging
+            host_match = re.search(r"@([^:/]+)", url)
+            host_str = host_match.group(1) if host_match else "Supabase PostgreSQL"
+            logger.info("[SUPABASE CONNECT SUCCESS] Connected to PostgreSQL (%s)", host_str)
         except Exception as exc:
-            logger.warning(
-                "Postgres connection failed (%s). Falling back to SQLite.", exc
-            )
-            conn = None
+            logger.error("[SUPABASE CONNECT FAILURE] Failed to connect to PostgreSQL: %s", exc)
+            raise RuntimeError(f"Database Connection Error: Unable to connect to Supabase PostgreSQL: {exc}") from exc
 
     if conn:
         try:
