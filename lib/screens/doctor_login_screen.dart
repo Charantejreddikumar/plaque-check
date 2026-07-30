@@ -130,7 +130,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'PractoPro Clinical',
+                              'PlaqueCheck Clinical',
                               style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
                             ),
                             Text(

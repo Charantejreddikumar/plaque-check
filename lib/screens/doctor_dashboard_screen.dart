@@ -208,7 +208,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                               child: const Center(
                                 child: Padding(
                                   padding: EdgeInsets.all(24),
-                                  child: Text('No pending scans awaiting review. Clinical queue is clear!', style: TextStyle(color: Colors.white70)),
+                                  child: Text('No patient reports available.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                 ),
                               ),
                             ),

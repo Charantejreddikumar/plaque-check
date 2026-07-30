@@ -84,7 +84,7 @@ class _DoctorAnalyticsScreenState extends State<DoctorAnalyticsScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           const Text('Review Completion Efficiency Rate', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                                          Text('${_analyticsData?["review_completion_rate"] ?? 94.2}%', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
+                                          Text('${_analyticsData?["review_completion_rate"] ?? 0.0}%', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
                                         ],
                                       ),
                                     ),
@@ -101,13 +101,20 @@ class _DoctorAnalyticsScreenState extends State<DoctorAnalyticsScreen> {
                               borderRadius: 22,
                               child: Padding(
                                 padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: daily.map((d) {
-                                        final int count = d['count'] ?? 0;
+                                child: (_analyticsData?['total_reports'] ?? 0) == 0
+                                    ? const Center(
+                                        child: Text(
+                                          'No patient reports available.',
+                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                        ),
+                                      )
+                                    : Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: daily.map((d) {
+                                              final int count = d['count'] ?? 0;
                                         final double barHeight = (count * 6.0).clamp(20.0, 160.0);
                                         return Column(
                                           children: [

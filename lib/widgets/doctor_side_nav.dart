@@ -68,7 +68,7 @@ class _DoctorSideNavState extends State<DoctorSideNav> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'PractoPro AI',
+                          'PlaqueCheck',
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                         ),
                         Text(

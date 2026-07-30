@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -149,22 +150,32 @@ def get_doctor_analytics(user: dict = Depends(require_role(["doctor", "administr
     all_reports = list_all_reports()
     pending = len([r for r in all_reports if r.get("review_status") == "pending_review"])
     reviewed = len([r for r in all_reports if r.get("review_status") != "pending_review"])
-    
+    total_count = pending + reviewed
+
+    completion_rate = round((reviewed / total_count) * 100, 1) if total_count > 0 else 0.0
+
     low_risk = len([r for r in all_reports if r.get("plaque_percent", 0) < 20])
     mod_risk = len([r for r in all_reports if 20 <= r.get("plaque_percent", 0) < 50])
     high_risk = len([r for r in all_reports if r.get("plaque_percent", 0) >= 50])
 
+    # Compute actual daily review counts from real database report timestamps
+    day_counts = {"Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0}
+    days_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    for r in all_reports:
+        ts_str = r.get("reviewed_at") or r.get("timestamp")
+        if ts_str:
+            try:
+                dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                day_name = days_map[dt.weekday()]
+                day_counts[day_name] += 1
+            except Exception:
+                pass
+
+    daily_reviews = [{"day": day, "count": day_counts[day]} for day in days_map]
+
     return {
-        "review_completion_rate": 94.2 if (pending + reviewed) > 0 else 100.0,
-        "daily_reviews": [
-            {"day": "Mon", "count": 12},
-            {"day": "Tue", "count": 18},
-            {"day": "Wed", "count": 14},
-            {"day": "Thu", "count": 22},
-            {"day": "Fri", "count": 19},
-            {"day": "Sat", "count": 9},
-            {"day": "Sun", "count": 5},
-        ],
+        "review_completion_rate": completion_rate,
+        "daily_reviews": daily_reviews,
         "plaque_distribution": [
             {"category": "Optimal (<20%)", "count": low_risk},
             {"category": "Moderate (20-49%)", "count": mod_risk},
@@ -172,6 +183,7 @@ def get_doctor_analytics(user: dict = Depends(require_role(["doctor", "administr
         ],
         "total_reviews": reviewed,
         "pending_reviews": pending,
+        "total_reports": total_count,
     }
 
 
