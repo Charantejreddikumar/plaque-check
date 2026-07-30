@@ -259,46 +259,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => Navigator.pushNamed(context, '/history'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-              decoration: BoxDecoration(
-                color: (hasHistory ? AppTheme.accent(context) : Colors.white)
-                    .withValues(alpha: hasHistory ? 0.14 : 0.08),
+          FutureBuilder<SessionUser?>(
+            future: _userFuture,
+            builder: (context, snapshot) {
+              final user = snapshot.data;
+              if (user?.role == 'doctor') {
+                return ElevatedButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/doctor-dashboard'),
+                  icon: const Icon(Icons.medical_services_outlined, size: 14, color: Colors.white),
+                  label: const Text('Doctor Dashboard', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3182CE), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                );
+              }
+              if (user?.role == 'administrator') {
+                return ElevatedButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/admin-dashboard'),
+                  icon: const Icon(Icons.admin_panel_settings_outlined, size: 14, color: Colors.white),
+                  label: const Text('Admin Panel', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF805AD5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                );
+              }
+              return InkWell(
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    hasHistory
-                        ? Icons.history_edu_outlined
-                        : Icons.info_outline_rounded,
-                    color: AppTheme.accentSoft(context),
-                    size: 14,
+                onTap: () => Navigator.pushNamed(context, '/history'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: (hasHistory ? AppTheme.accent(context) : Colors.white)
+                        .withValues(alpha: hasHistory ? 0.14 : 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
                   ),
-                  const SizedBox(width: 5),
-                  Text(
-                    hasHistory
-                        ? '${reports.length} saved scan(s)'
-                        : 'No scan history yet',
-                    style: TextStyle(
-                      color: AppTheme.accentSoft(context),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasHistory
+                            ? Icons.history_edu_outlined
+                            : Icons.info_outline_rounded,
+                        color: AppTheme.accentSoft(context),
+                        size: 14,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        hasHistory
+                            ? '${reports.length} saved scan(s)'
+                            : 'No scan history yet',
+                        style: TextStyle(
+                          color: AppTheme.accentSoft(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 3),
-                  Icon(
-                    Icons.chevron_right,
-                    color: AppTheme.accentSoft(context),
-                    size: 14,
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),

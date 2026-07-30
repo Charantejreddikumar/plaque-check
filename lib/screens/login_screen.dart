@@ -30,6 +30,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _fillAdminCredentials() {
+    setState(() {
+      _selectedRole = 'administrator';
+      _emailController.text = 'admin@plaquecheck.com';
+      _passwordController.text = 'password123';
+    });
+  }
+
   Future<void> _login() async {
     if (!(_formKey.currentState?.validate() ?? false) || _isLoading) {
       return;
@@ -75,17 +83,27 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           const _AuthLogo(),
           const SizedBox(height: 24),
+
+          // Role Switcher Cards Title
           Text(
-            'PlaqueCheck Clinical Portal',
+            _selectedRole == 'doctor'
+                ? '🩺 Doctor Clinical Portal'
+                : _selectedRole == 'administrator'
+                    ? '🛡️ Administrator Portal'
+                    : '👤 Patient Sign In',
             style: TextStyle(
               color: AppTheme.textPrimary(context),
-              fontSize: 26,
+              fontSize: 24,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Select your role to log into your workspace.',
+            _selectedRole == 'doctor'
+                ? 'Access patient queue, review scans & prescribe treatments.'
+                : _selectedRole == 'administrator'
+                    ? 'System metrics, doctor approvals & security audit logs.'
+                    : 'Sign in to track your personal plaque & oral health.',
             style: TextStyle(
               color: AppTheme.textSecondary(context),
               fontSize: 13,
@@ -94,41 +112,47 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Role Selector Tabs
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-            ),
-            child: Row(
-              children: [
-                _RoleTab(
-                  label: 'Patient',
+          // Prominent Role Selection Cards
+          Row(
+            children: [
+              Expanded(
+                child: _RoleCard(
+                  title: 'Patient',
+                  subtitle: 'Login',
                   icon: Icons.person_outline,
+                  color: const Color(0xFF3AAFA9),
                   isSelected: _selectedRole == 'patient',
                   onTap: () => setState(() => _selectedRole = 'patient'),
                 ),
-                _RoleTab(
-                  label: 'Doctor',
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _RoleCard(
+                  title: 'Doctor',
+                  subtitle: 'Portal',
                   icon: Icons.medical_services_outlined,
+                  color: const Color(0xFF3182CE),
                   isSelected: _selectedRole == 'doctor',
                   onTap: () => setState(() => _selectedRole = 'doctor'),
                 ),
-                _RoleTab(
-                  label: 'Admin',
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _RoleCard(
+                  title: 'Admin',
+                  subtitle: 'Portal',
                   icon: Icons.admin_panel_settings_outlined,
+                  color: const Color(0xFF805AD5),
                   isSelected: _selectedRole == 'administrator',
                   onTap: () => setState(() => _selectedRole = 'administrator'),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
 
           GlassCard(
-            borderRadius: 32,
+            borderRadius: 28,
             opacity: 0.14,
             borderOpacity: 0.22,
             glowColor: const Color(0xFF2B7A78),
@@ -140,7 +164,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     validator: _validateEmail,
-                    decoration: _inputDecoration('Email Address', Icons.email_outlined),
+                    decoration: _inputDecoration(
+                      _selectedRole == 'doctor'
+                          ? 'Doctor Email Address'
+                          : _selectedRole == 'administrator'
+                              ? 'Admin Email (admin@plaquecheck.com)'
+                              : 'Patient Email Address',
+                      Icons.email_outlined,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -180,19 +211,53 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Footer links
+          // Role-specific quick actions
           if (_selectedRole == 'doctor') ...[
             Center(
-              child: TextButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/register-doctor'),
-                icon: const Icon(Icons.medical_information_outlined, color: Color(0xFF3AAFA9)),
-                label: const Text(
-                  'Doctor Registration Request',
-                  style: TextStyle(color: Color(0xFF3AAFA9), fontWeight: FontWeight.bold),
-                ),
+              child: Column(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/register-doctor'),
+                    icon: const Icon(Icons.medical_information_outlined, color: Color(0xFF3AAFA9)),
+                    label: const Text(
+                      'Apply for Doctor Registration',
+                      style: TextStyle(color: Color(0xFF3AAFA9), fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF3AAFA9)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Requires Administrator verification after submission',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                  ),
+                ],
               ),
             ),
-          ] else if (_selectedRole == 'patient') ...[
+          ] else if (_selectedRole == 'administrator') ...[
+            Center(
+              child: Column(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _fillAdminCredentials,
+                    icon: const Icon(Icons.key, color: Colors.white, size: 18),
+                    label: const Text('Auto-Fill System Admin Credentials'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF805AD5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Default Admin: admin@plaquecheck.com / password123',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -215,13 +280,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ],
-            ),
-          ] else ...[
-            Center(
-              child: Text(
-                'Default Admin: admin@plaquecheck.com / password123',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
-              ),
             ),
           ],
         ],
@@ -270,49 +328,63 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _RoleTab extends StatelessWidget {
-  const _RoleTab({
-    required this.label,
+class _RoleCard extends StatelessWidget {
+  const _RoleCard({
+    required this.title,
+    required this.subtitle,
     required this.icon,
+    required this.color,
     required this.isSelected,
     required this.onTap,
   });
 
-  final String label;
+  final String title;
+  final String subtitle;
   final IconData icon;
+  final Color color;
   final bool isSelected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2B7A78) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected ? color : Colors.white.withValues(alpha: 0.12),
+            width: isSelected ? 2.0 : 1.0,
           ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: isSelected ? color : Colors.white70,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
               ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: isSelected ? color : Colors.white54,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
