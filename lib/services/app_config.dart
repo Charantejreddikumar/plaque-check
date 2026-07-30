@@ -21,6 +21,10 @@ class AppConfig {
       return normalizeApiBaseUrl(configured);
     }
 
+    if (kDebugMode && kIsWeb) {
+      return 'http://localhost:8000';
+    }
+
     return normalizeApiBaseUrl(defaultApiBaseUrl);
   }
 
