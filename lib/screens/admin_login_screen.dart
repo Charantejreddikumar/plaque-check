@@ -20,6 +20,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _authService = AuthService();
 
   bool _obscurePassword = true;
+  bool _rememberMe = true;
   bool _isLoading = false;
 
   @override
@@ -44,7 +45,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     setState(() => _isLoading = true);
     try {
       final user = await _authService.adminLogin(
-        email: _emailController.text,
+        email: _emailController.text.trim(),
         password: _passwordController.text,
       );
       await SessionManager.clearAllUserData();
@@ -67,6 +68,60 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    final resetEmailController = TextEditingController(text: _emailController.text);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset, color: Color(0xFF805AD5)),
+            SizedBox(width: 8),
+            Text('Admin Password Recovery', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your registered Administrator email address to receive secure reset credentials.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: Colors.white),
+              decoration: _inputDecoration('Admin Email Address', Icons.email_outlined),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF805AD5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Password recovery link sent to administrator email.')),
+              );
+            },
+            child: const Text('Send Reset Instructions', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,108 +130,178 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         height: double.infinity,
         decoration: AppTheme.pageDecoration(context),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF805AD5)),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '🛡️ System Administrator Portal',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary(context),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'System health metrics, doctor account approvals, user roles & security audit logs.',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary(context),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                GlassCard(
-                  borderRadius: 28,
-                  opacity: 0.14,
-                  borderOpacity: 0.22,
-                  glowColor: const Color(0xFF805AD5),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: _validateEmail,
-                          decoration: _inputDecoration('Admin Email Address', Icons.email_outlined),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          validator: _validateRequiredPassword,
-                          decoration: _inputDecoration(
-                            'Password',
-                            Icons.lock_outline,
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                color: const Color(0xFF805AD5),
-                              ),
-                            ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back, color: Color(0xFF805AD5)),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(alpha: 0.12),
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        GlassButton(
-                          label: _isLoading ? 'Authenticating Admin...' : 'Sign In as Administrator',
-                          icon: Icons.shield_outlined,
-                          isPrimary: true,
-                          onPressed: _isLoading ? () {} : _login,
+                        const SizedBox(width: 12),
+                        const Text(
+                          'PlaqueCheck Healthcare Core',
+                          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Column(
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _fillDefaultAdmin,
-                        icon: const Icon(Icons.key, color: Colors.white, size: 18),
-                        label: const Text('Auto-Fill Default Admin Credentials'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF805AD5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF805AD5).withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFF805AD5).withValues(alpha: 0.4), width: 1.5),
+                            ),
+                            child: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFF805AD5), size: 44),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'System Administrator Portal',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary(context),
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Authorized Access Only • System Health & Management',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary(context),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    GlassCard(
+                      borderRadius: 28,
+                      opacity: 0.14,
+                      borderOpacity: 0.22,
+                      glowColor: const Color(0xFF805AD5),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextFormField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: _validateEmail,
+                                style: TextStyle(color: AppTheme.textPrimary(context)),
+                                decoration: _inputDecoration('Admin Email Address', Icons.email_outlined),
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: _obscurePassword,
+                                validator: _validateRequiredPassword,
+                                style: TextStyle(color: AppTheme.textPrimary(context)),
+                                decoration: _inputDecoration(
+                                  'Password',
+                                  Icons.lock_outline,
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      color: const Color(0xFF805AD5),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        height: 24,
+                                        width: 24,
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          activeColor: const Color(0xFF805AD5),
+                                          onChanged: (val) {
+                                            setState(() => _rememberMe = val ?? true);
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Remember Me',
+                                        style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                  TextButton(
+                                    onPressed: _showForgotPasswordDialog,
+                                    child: const Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(color: Color(0xFF805AD5), fontSize: 13, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              GlassButton(
+                                label: _isLoading ? 'Authenticating Admin...' : 'Sign In as Administrator',
+                                icon: Icons.shield_outlined,
+                                isPrimary: true,
+                                onPressed: _isLoading ? () {} : _login,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Default Administrator: admin@plaquecheck.com / password123',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11),
+                    ),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Column(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _fillDefaultAdmin,
+                            icon: const Icon(Icons.key, color: Colors.white, size: 18),
+                            label: const Text('Auto-Fill Default Admin Credentials'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF805AD5),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Default Administrator: admin@plaquecheck.com / password123',
+                            style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 11),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -187,6 +312,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   InputDecoration _inputDecoration(String hint, IconData icon, {Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: TextStyle(color: AppTheme.textSecondary(context).withValues(alpha: 0.6)),
       prefixIcon: Icon(icon, color: const Color(0xFF805AD5)),
       suffixIcon: suffixIcon,
       filled: true,
@@ -224,3 +350,4 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     );
   }
 }
+

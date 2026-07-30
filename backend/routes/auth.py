@@ -161,8 +161,17 @@ def login(payload: LoginRequest) -> dict:
 
     if payload.role == "doctor":
         return doctor_login(payload)
-    elif payload.role == "administrator" or payload.role == "admin":
+    elif payload.role in ("administrator", "admin"):
         return admin_login(payload)
+    elif payload.role == "patient":
+        return patient_login(payload)
+
+    user = find_user_by_email(email)
+    if user:
+        if user["role"] == "doctor":
+            return doctor_login(payload)
+        elif user["role"] in ("administrator", "admin"):
+            return admin_login(payload)
 
     return patient_login(payload)
 

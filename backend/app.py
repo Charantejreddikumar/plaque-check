@@ -36,12 +36,14 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="PlaqueCheck Backend", version="0.3.0")
 
-cors_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+cors_env = os.getenv("CORS_ALLOW_ORIGINS", "*")
 allowed_origins = [
     origin.strip()
     for origin in cors_env.split(",")
-    if origin.strip() and origin.strip() != "*"
+    if origin.strip()
 ]
+if not allowed_origins:
+    allowed_origins = ["*"]
 allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
 

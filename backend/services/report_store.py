@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
 import sqlite3
-from psycopg2.extras import RealDictCursor
+try:
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    RealDictCursor = None
 
 from services.db import get_db_connection
 

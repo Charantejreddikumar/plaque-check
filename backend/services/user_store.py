@@ -3,7 +3,10 @@ import logging
 import secrets
 from datetime import datetime, timezone
 import sqlite3
-from psycopg2.extras import RealDictCursor
+try:
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    RealDictCursor = None
 from passlib.context import CryptContext
 
 from services.db import get_db_connection
@@ -371,6 +374,9 @@ def find_patient_user_by_email(email: str) -> dict | None:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM patient_users WHERE LOWER(email) = LOWER(%s)", (target,))
             row = cursor.fetchone()
+            if not row:
+                cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM users WHERE LOWER(email) = LOWER(%s) AND role = 'patient'", (target,))
+                row = cursor.fetchone()
             if row:
                 d = dict(row)
                 d["role"] = "patient"
@@ -379,6 +385,8 @@ def find_patient_user_by_email(email: str) -> dict | None:
         else:
             conn.row_factory = sqlite3.Row
             row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM patient_users WHERE LOWER(email) = LOWER(?)", (target,)).fetchone()
+            if not row:
+                row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM users WHERE LOWER(email) = LOWER(?) AND role = 'patient'", (target,)).fetchone()
             if row:
                 d = dict(row)
                 d["role"] = "patient"
@@ -395,6 +403,9 @@ def find_doctor_user_by_email(email: str) -> dict | None:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM doctor_users WHERE LOWER(email) = LOWER(%s)", (target,))
             row = cursor.fetchone()
+            if not row:
+                cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM users WHERE LOWER(email) = LOWER(%s) AND (role = 'doctor' OR role = 'doctor_users')", (target,))
+                row = cursor.fetchone()
             if row:
                 d = dict(row)
                 d["role"] = "doctor"
@@ -403,6 +414,8 @@ def find_doctor_user_by_email(email: str) -> dict | None:
         else:
             conn.row_factory = sqlite3.Row
             row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM doctor_users WHERE LOWER(email) = LOWER(?)", (target,)).fetchone()
+            if not row:
+                row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM users WHERE LOWER(email) = LOWER(?) AND (role = 'doctor' OR role = 'doctor_users')", (target,)).fetchone()
             if row:
                 d = dict(row)
                 d["role"] = "doctor"
@@ -419,6 +432,9 @@ def find_admin_user_by_email(email: str) -> dict | None:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM admin_users WHERE LOWER(email) = LOWER(%s)", (target,))
             row = cursor.fetchone()
+            if not row:
+                cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM users WHERE LOWER(email) = LOWER(%s) AND (role = 'administrator' OR role = 'admin')", (target,))
+                row = cursor.fetchone()
             if row:
                 d = dict(row)
                 d["role"] = "administrator"
@@ -427,6 +443,8 @@ def find_admin_user_by_email(email: str) -> dict | None:
         else:
             conn.row_factory = sqlite3.Row
             row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM admin_users WHERE LOWER(email) = LOWER(?)", (target,)).fetchone()
+            if not row:
+                row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM users WHERE LOWER(email) = LOWER(?) AND (role = 'administrator' OR role = 'admin')", (target,)).fetchone()
             if row:
                 d = dict(row)
                 d["role"] = "administrator"
@@ -633,6 +651,19 @@ def find_user_by_token(token: str) -> dict | None:
                 (token_hash,),
             )
             row = cursor.fetchone()
+            if not row:
+                cursor.execute("SELECT user_id FROM sessions WHERE token_hash = %s", (token_hash,))
+                srow = cursor.fetchone()
+                if srow:
+                    uid = srow["user_id"]
+                    cursor.execute("SELECT id, name, email, 'patient' as role, status, created_at FROM patient_users WHERE id = %s", (uid,))
+                    row = cursor.fetchone()
+                    if not row:
+                        cursor.execute("SELECT id, name, email, 'doctor' as role, status, created_at FROM doctor_users WHERE id = %s", (uid,))
+                        row = cursor.fetchone()
+                    if not row:
+                        cursor.execute("SELECT id, name, email, 'administrator' as role, status, created_at FROM admin_users WHERE id = %s", (uid,))
+                        row = cursor.fetchone()
             return dict(row) if row else None
         else:
             conn.row_factory = sqlite3.Row
@@ -645,6 +676,15 @@ def find_user_by_token(token: str) -> dict | None:
                 """,
                 (token_hash,),
             ).fetchone()
+            if not row:
+                srow = conn.execute("SELECT user_id FROM sessions WHERE token_hash = ?", (token_hash,)).fetchone()
+                if srow:
+                    uid = srow["user_id"]
+                    row = conn.execute("SELECT id, name, email, 'patient' as role, status, created_at FROM patient_users WHERE id = ?", (uid,)).fetchone()
+                    if not row:
+                        row = conn.execute("SELECT id, name, email, 'doctor' as role, status, created_at FROM doctor_users WHERE id = ?", (uid,)).fetchone()
+                    if not row:
+                        row = conn.execute("SELECT id, name, email, 'administrator' as role, status, created_at FROM admin_users WHERE id = ?", (uid,)).fetchone()
             return dict(row) if row else None
 
 

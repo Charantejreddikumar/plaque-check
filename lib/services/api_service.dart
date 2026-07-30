@@ -389,6 +389,261 @@ class ApiService {
     return decoded is List ? decoded : [];
   }
 
+  Future<List<dynamic>> fetchAdminPatients({String query = '', String filterType = 'all'}) async {
+    final url = Uri.parse('$_baseUrl/admin/patients?q=$query&filter_type=$filterType');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
+  Future<Map<String, dynamic>> fetchPatientDetails(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/patients/$userId');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<bool> updatePatientStatus(int userId, String status) async {
+    final url = Uri.parse('$_baseUrl/admin/patients/$userId/status?status=$status');
+    final headers = await _authHeaders();
+    final response = await _client.post(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<bool> resetUserPassword(int userId, String newPassword) async {
+    final url = Uri.parse('$_baseUrl/admin/patients/$userId/reset-password');
+    final headers = await _authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final response = await _client.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'new_password': newPassword}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<bool> assignDoctorToPatient(int patientId, int doctorId) async {
+    final url = Uri.parse('$_baseUrl/admin/patients/$patientId/assign-doctor');
+    final headers = await _authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final response = await _client.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'doctor_id': doctorId}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<bool> rejectDoctor(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/doctors/$userId/reject');
+    final headers = await _authHeaders();
+    final response = await _client.post(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<bool> suspendDoctor(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/doctors/$userId/suspend');
+    final headers = await _authHeaders();
+    final response = await _client.post(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<bool> reactivateDoctor(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/doctors/$userId/reactivate');
+    final headers = await _authHeaders();
+    final response = await _client.post(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<List<dynamic>> fetchAdminReports({String filterType = 'all', String query = ''}) async {
+    final url = Uri.parse('$_baseUrl/admin/reports?filter_type=$filterType&q=$query');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
+  Future<Map<String, dynamic>> fetchAiMonitoringStatus() async {
+    final url = Uri.parse('$_baseUrl/admin/ai/status');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<bool> deployAiModel(String version) async {
+    final url = Uri.parse('$_baseUrl/admin/ai/deploy');
+    final headers = await _authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final response = await _client.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'model_version': version}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<bool> rollbackAiModel(String version) async {
+    final url = Uri.parse('$_baseUrl/admin/ai/rollback');
+    final headers = await _authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final response = await _client.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'model_version': version}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<Map<String, dynamic>> fetchAdminAnalyticsData() async {
+    final url = Uri.parse('$_baseUrl/admin/analytics');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<List<dynamic>> fetchAdminNotifications() async {
+    final url = Uri.parse('$_baseUrl/admin/notifications');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
+  Future<bool> sendBroadcastNotification({
+    required String targetRole,
+    required String title,
+    required String message,
+  }) async {
+    final url = Uri.parse('$_baseUrl/admin/notifications/broadcast');
+    final headers = await _authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final response = await _client.post(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        'target_role': targetRole,
+        'title': title,
+        'message': message,
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<Map<String, dynamic>> fetchSystemHealth() async {
+    final url = Uri.parse('$_baseUrl/admin/system-health');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<Map<String, dynamic>> fetchStorageStats() async {
+    final url = Uri.parse('$_baseUrl/admin/storage');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<Map<String, dynamic>> fetchAdminProfile() async {
+    final url = Uri.parse('$_baseUrl/admin/profile');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<Map<String, dynamic>> globalAdminSearch(String query) async {
+    final url = Uri.parse('$_baseUrl/admin/search?q=$query');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<String> exportAdminData(String resource) async {
+    final url = Uri.parse('$_baseUrl/admin/export/$resource');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw const ApiException('Failed to export dataset.');
+    }
+    return response.body;
+  }
+
   String mediaUrl(String relativePath, {String? token}) {
     if (relativePath.isEmpty || relativePath.startsWith('http')) {
       return relativePath;
