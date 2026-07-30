@@ -18,7 +18,9 @@ LOCAL_DB_DIR = Path(__file__).resolve().parents[1] / "database"
 
 def _get_clean_database_url() -> str:
     url = (
-        os.getenv("DATABASE_URL")
+        os.getenv("SUPABASE_DATABASE_URL")
+        or os.getenv("SUPABASE_DB_URL")
+        or os.getenv("DATABASE_URL")
         or os.getenv("Database_URL")
         or os.getenv("database_url")
         or ""
