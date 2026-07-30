@@ -22,13 +22,14 @@ from services.user_store import (
     get_doctor_profile,
     get_patient_profile,
     log_audit_event,
+    verify_password_hash,
 )
 from services.auth_context import current_user
 from passlib.context import CryptContext
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+password_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256", "sha256_crypt"], deprecated="auto")
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -189,7 +190,7 @@ def patient_login(payload: LoginRequest) -> dict:
         logger.warning("[AUTH FAILURE] Patient login failed: Email %s not found in patient_users", email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not password_context.verify(payload.password, user["password_hash"]):
+    if not verify_password_hash(payload.password, user["password_hash"]):
         logger.warning("[AUTH FAILURE] Patient login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -226,7 +227,7 @@ def doctor_login(payload: LoginRequest) -> dict:
         logger.warning("[AUTH FAILURE] Doctor login failed: Email %s not found in doctor_users", email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not password_context.verify(payload.password, user["password_hash"]):
+    if not verify_password_hash(payload.password, user["password_hash"]):
         logger.warning("[AUTH FAILURE] Doctor login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -267,7 +268,7 @@ def admin_login(payload: LoginRequest) -> dict:
         logger.warning("[AUTH FAILURE] Admin login failed: Email %s not found in admin_users", email)
         raise HTTPException(status_code=403, detail="This account is not authorized as an Administrator.")
 
-    if not password_context.verify(payload.password, user["password_hash"]):
+    if not verify_password_hash(payload.password, user["password_hash"]):
         logger.warning("[AUTH FAILURE] Admin login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

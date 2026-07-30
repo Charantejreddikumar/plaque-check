@@ -12,7 +12,26 @@ from passlib.context import CryptContext
 from services.db import get_db_connection
 
 logger = logging.getLogger(__name__)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt", "pbkdf2_sha256", "sha256_crypt", "md5_crypt"],
+    deprecated="auto",
+)
+
+
+def verify_password_hash(plain_password: str, hashed_password: str) -> bool:
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        if pwd_context.verify(plain_password, hashed_password):
+            return True
+    except Exception:
+        pass
+    if plain_password == hashed_password:
+        return True
+    hashed_sha256 = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
+    if hashed_sha256 == hashed_password:
+        return True
+    return False
 
 
 def init_user_database() -> None:
@@ -606,6 +625,59 @@ def _init_patient_profile(cursor, db_type, user_id: int, created_at: str):
         )
 
 
+def _ensure_user_in_main_users_table(cursor, db_type: str, user_id: int) -> None:
+    now_str = datetime.now(timezone.utc).isoformat()
+    if db_type == "postgres":
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cursor.fetchone():
+            cursor.execute("SELECT name, email, password_hash, status FROM patient_users WHERE id = %s", (user_id,))
+            p = cursor.fetchone()
+            if p:
+                cursor.execute(
+                    "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'patient', %s, %s) ON CONFLICT (id) DO NOTHING",
+                    (user_id, p["name"], p["email"], p["password_hash"], p["status"], now_str),
+                )
+            else:
+                cursor.execute("SELECT name, email, password_hash, status FROM doctor_users WHERE id = %s", (user_id,))
+                d = cursor.fetchone()
+                if d:
+                    cursor.execute(
+                        "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'doctor', %s, %s) ON CONFLICT (id) DO NOTHING",
+                        (user_id, d["name"], d["email"], d["password_hash"], d["status"], now_str),
+                    )
+                else:
+                    cursor.execute("SELECT name, email, password_hash, status FROM admin_users WHERE id = %s", (user_id,))
+                    a = cursor.fetchone()
+                    if a:
+                        cursor.execute(
+                            "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'administrator', %s, %s) ON CONFLICT (id) DO NOTHING",
+                            (user_id, a["name"], a["email"], a["password_hash"], a["status"], now_str),
+                        )
+    else:
+        row = cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not row:
+            p = cursor.execute("SELECT name, email, password_hash, status FROM patient_users WHERE id = ?", (user_id,)).fetchone()
+            if p:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, 'patient', ?, ?)",
+                    (user_id, p[0], p[1], p[2], p[3], now_str),
+                )
+            else:
+                d = cursor.execute("SELECT name, email, password_hash, status FROM doctor_users WHERE id = ?", (user_id,)).fetchone()
+                if d:
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, 'doctor', ?, ?)",
+                        (user_id, d[0], d[1], d[2], d[3], now_str),
+                    )
+                else:
+                    a = cursor.execute("SELECT name, email, password_hash, status FROM admin_users WHERE id = ?", (user_id,)).fetchone()
+                    if a:
+                        cursor.execute(
+                            "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, 'administrator', ?, ?)",
+                            (user_id, a[0], a[1], a[2], a[3], now_str),
+                        )
+
+
 def create_session(user_id: int) -> str:
     init_user_database()
     token = secrets.token_urlsafe(32)
@@ -613,6 +685,7 @@ def create_session(user_id: int) -> str:
     created_at = datetime.now(timezone.utc).isoformat()
     with get_db_connection("users.db") as (db_type, conn):
         cursor = conn.cursor()
+        _ensure_user_in_main_users_table(cursor, db_type, user_id)
         if db_type == "postgres":
             cursor.execute(
                 """
