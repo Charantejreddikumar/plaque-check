@@ -7,10 +7,16 @@ import 'screens/comparison_screen.dart';
 import 'screens/crop_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/developer_settings_screen.dart';
+import 'screens/doctor_analytics_screen.dart';
 import 'screens/doctor_dashboard_screen.dart';
 import 'screens/doctor_login_screen.dart';
+import 'screens/doctor_notifications_screen.dart';
+import 'screens/doctor_patient_details_screen.dart';
+import 'screens/doctor_patients_screen.dart';
+import 'screens/doctor_profile_screen.dart';
 import 'screens/doctor_register_screen.dart';
 import 'screens/doctor_review_screen.dart';
+import 'screens/doctor_settings_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/patient_login_screen.dart';
@@ -68,7 +74,13 @@ class PlaqueCheckApp extends StatelessWidget {
             '/forgot-password': (_) => const ForgotPasswordScreen(),
             '/dashboard': (_) => const DashboardScreen(),
             '/doctor-dashboard': (_) => const DoctorDashboardScreen(),
+            '/doctor-patients': (_) => const DoctorPatientsScreen(),
+            '/doctor-patient-details': (_) => const DoctorPatientDetailsScreen(),
             '/doctor-review': (_) => const DoctorReviewScreen(),
+            '/doctor-analytics': (_) => const DoctorAnalyticsScreen(),
+            '/doctor-notifications': (_) => const DoctorNotificationsScreen(),
+            '/doctor-profile': (_) => const DoctorProfileScreen(),
+            '/doctor-settings': (_) => const DoctorSettingsScreen(),
             '/admin-dashboard': (_) => const AdminDashboardScreen(),
             '/scan-instructions': (_) => const ScanInstructionScreen(),
             '/scan': (_) => const ScanScreen(),

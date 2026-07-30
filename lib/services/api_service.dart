@@ -298,6 +298,28 @@ class ApiService {
     return body;
   }
 
+  Future<Map<String, dynamic>> fetchDoctorAnalytics() async {
+    final url = Uri.parse('$_baseUrl/doctor/analytics');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<Map<String, dynamic>> fetchPatientDetail(int patientId) async {
+    final url = Uri.parse('$_baseUrl/doctor/patients/$patientId');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
   Future<Map<String, dynamic>> fetchAdminDashboard() async {
     final url = Uri.parse('$_baseUrl/admin/dashboard');
     final headers = await _authHeaders();
