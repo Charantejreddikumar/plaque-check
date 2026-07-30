@@ -187,11 +187,11 @@ def patient_login(payload: LoginRequest) -> dict:
             logger.warning("[AUTH FAILURE] Patient login rejected: Email %s belongs to a different role", email)
             raise HTTPException(status_code=403, detail="This account is not registered as a patient.")
         logger.warning("[AUTH FAILURE] Patient login failed: Email %s not found in patient_users", email)
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not password_context.verify(payload.password, user["password_hash"]):
         logger.warning("[AUTH FAILURE] Patient login failed: Invalid password for email %s", email)
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if user["status"] == "deactivated":
         logger.warning("[AUTH FAILURE] Patient login rejected: Account %s is deactivated", email)
@@ -224,11 +224,11 @@ def doctor_login(payload: LoginRequest) -> dict:
             logger.warning("[AUTH FAILURE] Doctor login rejected: Email %s belongs to a different role", email)
             raise HTTPException(status_code=403, detail="This account is not registered as a doctor.")
         logger.warning("[AUTH FAILURE] Doctor login failed: Email %s not found in doctor_users", email)
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not password_context.verify(payload.password, user["password_hash"]):
         logger.warning("[AUTH FAILURE] Doctor login failed: Invalid password for email %s", email)
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if user["status"] == "deactivated":
         logger.warning("[AUTH FAILURE] Doctor login rejected: Account %s is deactivated", email)
@@ -269,7 +269,7 @@ def admin_login(payload: LoginRequest) -> dict:
 
     if not password_context.verify(payload.password, user["password_hash"]):
         logger.warning("[AUTH FAILURE] Admin login failed: Invalid password for email %s", email)
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_session(user["id"])
     log_audit_event(user["id"], "LOGIN", f"Admin logged in: {email}")
