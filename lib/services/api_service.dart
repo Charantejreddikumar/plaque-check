@@ -275,6 +275,17 @@ class ApiService {
     return decoded is List ? decoded : [];
   }
 
+  Future<Map<String, dynamic>> fetchReportDetails(int reportId) async {
+    final url = Uri.parse('$_baseUrl/doctor/reports/$reportId');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
   Future<Map<String, dynamic>> reviewReport(int reportId, Map<String, dynamic> reviewData) async {
     final url = Uri.parse('$_baseUrl/doctor/reports/$reportId/review');
     final headers = await _authHeaders();
