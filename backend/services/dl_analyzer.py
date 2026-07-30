@@ -47,44 +47,57 @@ class DLAnalyzer(Analyzer):
                 import torch.nn as nn
 
                 self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                state_dict = torch.load(str(PT_PATH), map_location=self._device)
-                
-                if "classifier.1.weight" in state_dict:
-                    num_classes = state_dict["classifier.1.weight"].shape[0]
-                    model = models.efficientnet_b0(weights=None)
-                    in_features = model.classifier[1].in_features
-                    model.classifier[1] = nn.Linear(in_features, num_classes)
-                elif "classifier.3.weight" in state_dict:
-                    num_classes = state_dict["classifier.3.weight"].shape[0]
-                    model = models.mobilenet_v3_large(weights=None)
-                    in_features = model.classifier[3].in_features
-                    model.classifier[3] = nn.Linear(in_features, num_classes)
-                elif "fc.weight" in state_dict:
-                    num_classes = state_dict["fc.weight"].shape[0]
-                    model = models.resnet50(weights=None)
-                    in_features = model.fc.in_features
-                    model.fc = nn.Linear(in_features, num_classes)
-                else:
-                    num_classes = 5
-                    model = models.mobilenet_v3_large(weights=None)
+                loaded = torch.load(str(PT_PATH), map_location=self._device)
 
-                model.load_state_dict(state_dict)
-                model.eval()
-                self._pt_model = model
-                logger.info("PyTorch .pt Deep Learning Model loaded successfully with %d classes.", num_classes)
+                if isinstance(loaded, nn.Module):
+                    model = loaded
+                    model.to(self._device)
+                    model.eval()
+                    self._pt_model = model
+                    logger.info("PyTorch .pt Deep Learning Model loaded as full nn.Module.")
+                else:
+                    state_dict = loaded.get("state_dict", loaded) if isinstance(loaded, dict) else loaded
+                    if isinstance(state_dict, dict):
+                        if "classifier.1.weight" in state_dict:
+                            num_classes = state_dict["classifier.1.weight"].shape[0]
+                            model = models.efficientnet_b0(weights=None)
+                            in_features = model.classifier[1].in_features
+                            model.classifier[1] = nn.Linear(in_features, num_classes)
+                        elif "classifier.3.weight" in state_dict:
+                            num_classes = state_dict["classifier.3.weight"].shape[0]
+                            model = models.mobilenet_v3_large(weights=None)
+                            in_features = model.classifier[3].in_features
+                            model.classifier[3] = nn.Linear(in_features, num_classes)
+                        elif "fc.weight" in state_dict:
+                            num_classes = state_dict["fc.weight"].shape[0]
+                            model = models.resnet50(weights=None)
+                            in_features = model.fc.in_features
+                            model.fc = nn.Linear(in_features, num_classes)
+                        else:
+                            num_classes = 5
+                            model = models.mobilenet_v3_large(weights=None)
+
+                        model.load_state_dict(state_dict)
+                        model.to(self._device)
+                        model.eval()
+                        self._pt_model = model
+                        logger.info("PyTorch .pt Deep Learning Model loaded successfully with %d classes.", num_classes)
             except Exception:
                 logger.exception("Failed to load PyTorch model.")
 
     def analyze(self, image_path: Path) -> dict:
-        logger.info("=== Starting PlaqueCheck Pipeline Execution for %s ===", image_path.name)
+        logger.info("=== Starting PlaqueCheck Pipeline Execution ===")
+        logger.info("[Stage 1/9] Image received: %s", image_path.name)
         image = cv2.imread(str(image_path))
         if image is None:
             logger.error("[Stage 1 Failed] Unable to read image file from path: %s", image_path)
-            raise ValueError("Please upload a clear image showing human teeth.")
+            raise ValueError("This is not a valid teeth image.\nPlaque analysis cannot be performed.\nPlease scan your teeth again.")
 
         validate_teeth_image(image)
+        logger.info("[Stage 2/9] Validation result: PASSED (dim: %dx%d)", image.shape[1], image.shape[0])
+
         teeth_roi, roi_rect = extract_teeth_roi(image)
-        logger.info("[Stage 2/11 PASSED] Teeth ROI extracted: rect=%s, roi_shape=%s", roi_rect, teeth_roi.shape)
+        logger.info("Teeth ROI extracted: rect=%s, roi_shape=%s", roi_rect, teeth_roi.shape)
 
         if self._session is not None:
             return self._infer_onnx(image_path, teeth_roi)
@@ -96,28 +109,30 @@ class DLAnalyzer(Analyzer):
 
     def _infer_onnx(self, image_path: Path, image: np.ndarray) -> dict:
         nchw = _preprocess_image(image)
-        logger.info("[Stage 3/11 PASSED] Preprocessed tensor shape: %s", nchw.shape)
+        logger.info("[Stage 3/9] Preprocessing: tensor shape=%s, normalization=ImageNet", nchw.shape)
 
         input_name = self._session.get_inputs()[0].name
         outputs = self._session.run(None, {input_name: nchw})
         logits = outputs[0][0]
-        logger.info("[Stage 4/11 PASSED] ONNX Model Logits: %s", logits)
+        logger.info("[Stage 4/9] Inference: logits=%s", np.round(logits, 4))
 
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
+        logger.info("[Stage 5/9] Softmax probabilities: %s", np.round(probabilities, 4))
+
         predicted_class = int(np.argmax(probabilities))
-        raw_confidence = float(probabilities[predicted_class])
-        logger.info("[Stage 5/11 PASSED] Softmax Probabilities: %s", np.round(probabilities, 4))
-        logger.info("[Stage 6/11 PASSED] Predicted Class: %d", predicted_class)
-        logger.info("[Stage 7/11 PASSED] Un-capped Softmax Confidence: %.4f", raw_confidence)
-
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
-        overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+        logger.info("[Stage 6/9] Predicted class: %d (%s)", predicted_class, meta["severity"])
 
-        plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
+        dynamic_confidence = _compute_calibrated_confidence(probabilities)
+        logger.info("[Stage 7/9] Calibrated Confidence: %.2f", dynamic_confidence)
+
+        overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+        plaque_percent = _calculate_plaque_percent(meta["plaque_percent"], seg_percent)
+        logger.info("[Stage 8/9] Plaque percentage: %d%% (model_prior=%d%%, seg_percent=%d%%)", plaque_percent, meta["plaque_percent"], seg_percent)
+
         severity = _severity_for(plaque_percent)
-        dynamic_confidence = _compute_calibrated_confidence(probabilities, predicted_class, image)
-        logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, dynamic_confidence)
+        logger.info("[Stage 9/9] Final response: plaque_percent=%d%%, severity=%s, confidence=%.2f", plaque_percent, severity, dynamic_confidence)
 
         return {
             "image_path": _relative_path(image_path),
@@ -131,29 +146,34 @@ class DLAnalyzer(Analyzer):
     def _infer_pytorch(self, image_path: Path, image: np.ndarray) -> dict:
         import torch
 
+        if self._pt_model is None:
+            raise RuntimeError("PyTorch model is not initialized or failed to load.")
+
         nchw = _preprocess_image(image)
-        logger.info("[Stage 3/11 PASSED] Preprocessed PyTorch tensor shape: %s", nchw.shape)
+        logger.info("[Stage 3/9] Preprocessing: PyTorch tensor shape=%s, normalization=ImageNet", nchw.shape)
         tensor_in = torch.from_numpy(nchw).to(self._device)
 
         with torch.no_grad():
             logits = self._pt_model(tensor_in)[0].cpu().numpy()
 
-        logger.info("[Stage 4/11 PASSED] PyTorch Model Logits: %s", logits)
+        logger.info("[Stage 4/9] Inference: PyTorch logits=%s", np.round(logits, 4))
         exp_logits = np.exp(logits - np.max(logits))
         probabilities = exp_logits / np.sum(exp_logits)
+        logger.info("[Stage 5/9] Softmax probabilities: %s", np.round(probabilities, 4))
+
         predicted_class = int(np.argmax(probabilities))
-        raw_confidence = float(probabilities[predicted_class])
-        logger.info("[Stage 5/11 PASSED] Softmax Probabilities: %s", np.round(probabilities, 4))
-        logger.info("[Stage 6/11 PASSED] Predicted Class: %d", predicted_class)
-        logger.info("[Stage 7/11 PASSED] Un-capped Softmax Confidence: %.4f", raw_confidence)
-
         meta = CLASS_MAPPING.get(predicted_class, CLASS_MAPPING[1])
-        overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+        logger.info("[Stage 6/9] Predicted class: %d (%s)", predicted_class, meta["severity"])
 
-        plaque_percent = seg_percent if seg_percent > 0 else meta["plaque_percent"]
+        dynamic_confidence = _compute_calibrated_confidence(probabilities)
+        logger.info("[Stage 7/9] Calibrated Confidence: %.2f", dynamic_confidence)
+
+        overlay_path, seg_percent = _save_visual_outputs(image_path, image, meta["plaque_percent"])
+        plaque_percent = _calculate_plaque_percent(meta["plaque_percent"], seg_percent)
+        logger.info("[Stage 8/9] Plaque percentage: %d%% (model_prior=%d%%, seg_percent=%d%%)", plaque_percent, meta["plaque_percent"], seg_percent)
+
         severity = _severity_for(plaque_percent)
-        dynamic_confidence = _compute_calibrated_confidence(probabilities, predicted_class, image)
-        logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, dynamic_confidence)
+        logger.info("[Stage 9/9] Final response: plaque_percent=%d%%, severity=%s, confidence=%.2f", plaque_percent, severity, dynamic_confidence)
 
         return {
             "image_path": _relative_path(image_path),
@@ -177,27 +197,26 @@ def _preprocess_image(image: np.ndarray) -> np.ndarray:
     return np.transpose(normalized, (2, 0, 1))[np.newaxis, ...]
 
 
-def _compute_calibrated_confidence(probabilities: np.ndarray, predicted_class: int, image: np.ndarray) -> float:
-    raw_conf = float(probabilities[predicted_class])
-    
-    # 1. Base probability entropy factor
-    base_score = 0.62 + 0.20 * raw_conf
+def _compute_calibrated_confidence(probabilities: np.ndarray) -> float:
+    probs_sorted = np.sort(probabilities)[::-1]
+    p_max = float(probs_sorted[0])
+    p_second = float(probs_sorted[1]) if len(probs_sorted) > 1 else 0.0
+    margin = p_max - p_second
 
-    # 2. Teeth coverage ratio metric
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    tooth_lower = np.array([0, 0, 100], dtype=np.uint8)
-    tooth_upper = np.array([179, 100, 255], dtype=np.uint8)
-    tooth_mask = cv2.inRange(hsv, tooth_lower, tooth_upper)
-    coverage = float(cv2.countNonZero(tooth_mask)) / (image.shape[0] * image.shape[1])
-    coverage_bonus = float(np.clip(coverage * 0.4, 0.02, 0.10))
+    calibrated = 0.50 + 0.40 * p_max + 0.10 * margin
+    return round(float(np.clip(calibrated, 0.50, 0.99)), 2)
 
-    # 3. Image clarity / sharpness metric
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    laplacian_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
-    clarity_bonus = 0.04 if laplacian_var > 100 else 0.01
 
-    calibrated = base_score + coverage_bonus + clarity_bonus
-    return round(float(np.clip(calibrated, 0.72, 0.94)), 2)
+def _calculate_plaque_percent(model_percent: int, seg_percent: int) -> int:
+    if model_percent == 0:
+        if seg_percent < 25:
+            return 0
+        return int(np.clip(seg_percent // 4, 0, 10))
+    if model_percent > 0 and seg_percent > 0:
+        combined = int(round(0.70 * model_percent + 0.30 * seg_percent))
+        return int(np.clip(combined, 1, 100))
+    return model_percent
+
 
 
 def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: int) -> tuple[Path, int]:
@@ -260,8 +279,8 @@ def _save_visual_outputs(image_path: Path, image: np.ndarray, plaque_percent: in
 
         mask_bool = plaque_mask > 0
         overlay[mask_bool] = cv2.addWeighted(image[mask_bool], 0.35, color_overlay[mask_bool], 0.65, 0)
-    elif plaque_percent > 0 or seg_percent > 0:
-        # Fallback yellow/orange overlay if percentage > 0
+    elif plaque_percent > 0 and seg_percent > 0 and tooth_pixels > 0:
+        # Fallback yellow/orange overlay if percentage > 0 and enamel detected
         simple_yellow = cv2.inRange(hsv, np.array([10, 20, 50]), np.array([45, 255, 255]))
         simple_yellow = cv2.bitwise_and(simple_yellow, tooth_mask)
         if cv2.countNonZero(simple_yellow) > 0:

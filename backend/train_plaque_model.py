@@ -22,6 +22,9 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import models, transforms
 from PIL import Image, ImageFile
 
+import cv2
+from services.roi_cropper import extract_teeth_roi
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -97,6 +100,14 @@ class IntraoralPlaqueDataset(Dataset):
                             label = _compute_label_from_annotation(lbl_path)
                             self.samples.append((img_path, label))
 
+        # Explicitly load non-teeth dataset & hard negatives as Class 0
+        non_teeth_dir = data_dir / "non_teeth"
+        if non_teeth_dir.exists():
+            print(f"--> Found Non-Teeth / Hard Negative dataset: {non_teeth_dir}")
+            for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.PNG"]:
+                for img_path in non_teeth_dir.rglob(ext):
+                    self.samples.append((img_path, 0))
+
         # Directory-per-class fallback
         if len(self.samples) == 0:
             for class_dir in sorted(data_dir.glob("*")):
@@ -108,7 +119,7 @@ class IntraoralPlaqueDataset(Dataset):
                             for img_path in class_dir.glob(ext):
                                 self.samples.append((img_path, label))
 
-        print(f"--> Total intraoral dataset samples: {len(self.samples)}")
+        print(f"--> Total intraoral + non-teeth dataset samples: {len(self.samples)}")
 
     def __len__(self):
         return len(self.samples)
@@ -116,7 +127,12 @@ class IntraoralPlaqueDataset(Dataset):
     def __getitem__(self, idx):
         path, label = self.samples[idx]
         try:
-            image = Image.open(path).convert("RGB")
+            im_bgr = cv2.imread(str(path))
+            if im_bgr is None:
+                raise ValueError("Unreadable image")
+            roi, _ = extract_teeth_roi(im_bgr)
+            rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(rgb)
         except Exception:
             image = Image.new("RGB", (224, 224), (128, 128, 128))
 

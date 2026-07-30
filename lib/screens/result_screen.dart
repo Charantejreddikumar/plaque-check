@@ -429,7 +429,7 @@ class _ReportHeroCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Plaque Analysis Report',
+                  '3-Image Plaque Analysis Report',
                   style: TextStyle(
                     color: AppTheme.textPrimary(context),
                     fontSize: 17,
@@ -452,11 +452,12 @@ class _ReportHeroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Plaque Percentage',
+                      '3-IMAGE AVERAGE PLAQUE',
                       style: TextStyle(
                         color: AppTheme.textSecondary(context),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 4),

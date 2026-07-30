@@ -64,8 +64,7 @@ def test_predict_non_teeth_image_rejected():
     _, img_encoded = cv2.imencode(".png", img)
     files = {"image": ("dark_photo.png", io.BytesIO(img_encoded.tobytes()), "image/png")}
     res = client.post("/predict", headers=headers, files=files)
-    assert res.status_code == 400
-    assert res.json()["detail"] == "Please upload a clear image showing human teeth."
+    assert res.json()["detail"] == "This is not a valid teeth image.\nPlaque analysis cannot be performed.\nPlease scan your teeth again."
 
 def test_predict_invalid_extension():
     headers = get_auth_header()

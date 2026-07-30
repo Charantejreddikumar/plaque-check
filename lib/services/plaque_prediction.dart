@@ -10,11 +10,17 @@ class PlaquePrediction {
     required this.recommendation,
     required this.reportId,
     required this.timestamp,
+    this.individualResults = const [],
   });
 
   factory PlaquePrediction.fromJson(
     Map<String, dynamic> json,
   ) {
+    final rawIndividual = json['individual_results'] as List?;
+    final individual = rawIndividual != null
+        ? rawIndividual.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+        : <Map<String, dynamic>>[];
+
     return PlaquePrediction(
       imagePath: json['image_path'] as String? ?? '',
       processedImage: json['processed_image'] as String? ?? '',
@@ -28,6 +34,7 @@ class PlaquePrediction {
             json['timestamp'] as String? ?? '',
           ) ??
           DateTime.now(),
+      individualResults: individual,
     );
   }
 
@@ -39,6 +46,7 @@ class PlaquePrediction {
   final String recommendation;
   final int reportId;
   final DateTime timestamp;
+  final List<Map<String, dynamic>> individualResults;
 
   int get oralHealthScore =>
       (100 - plaquePercent).clamp(0, 100);

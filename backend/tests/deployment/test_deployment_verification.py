@@ -3,8 +3,9 @@ import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 from app import app
-from services.user_store import DATABASE_PATH as USER_DB_PATH, init_user_database
-from services.report_store import DATABASE_PATH as REPORT_DB_PATH, init_database
+from services.user_store import init_user_database
+from services.report_store import init_database
+from services.db import LOCAL_DB_DIR, get_db_connection
 
 client = TestClient(app)
 
@@ -28,13 +29,13 @@ def test_deployment_route_accessibility(route):
 # ----------------------------------------------------
 @pytest.mark.parametrize("i", range(1, 51))
 def test_deployment_database_connection(i):
-    # Verify sqlite DB files exist and connection can execute SELECT 1
-    with sqlite3.connect(USER_DB_PATH) as conn:
+    # Verify DB connection can execute SELECT 1
+    with get_db_connection("users.db") as (db_type, conn):
         cursor = conn.cursor()
         res = cursor.execute("SELECT 1").fetchone()
         assert res[0] == 1
 
-    with sqlite3.connect(REPORT_DB_PATH) as conn:
+    with get_db_connection("plaquecheck.db") as (db_type, conn):
         cursor = conn.cursor()
         res = cursor.execute("SELECT 1").fetchone()
         assert res[0] == 1

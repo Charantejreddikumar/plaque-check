@@ -95,6 +95,75 @@ class ApiService {
     }
   }
 
+  Future<PlaquePrediction> predictPlaqueBatch(List<XFile> images) async {
+    if (images.isEmpty) {
+      throw const ApiException('Please select teeth images for analysis.');
+    }
+    if (images.length == 1) {
+      return predictPlaque(images.first);
+    }
+    try {
+      debugPrint('========== PLAQUECHECK BATCH (3-IMAGE AVG) ==========');
+      debugPrint('BASE URL: $_baseUrl');
+      final url = Uri.parse('$_baseUrl/predict/batch');
+      debugPrint('PREDICT BATCH URL: $url');
+
+      final request = http.MultipartRequest('POST', url);
+      final headers = await _authHeaders();
+      request.headers.addAll(headers);
+
+      for (int i = 0; i < images.length; i++) {
+        final image = images[i];
+        final bytes = await image.readAsBytes();
+        final fileName = _fileNameFor(image);
+        final mime = lookupMimeType(image.path)?.split('/');
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'images',
+            bytes,
+            filename: fileName,
+            contentType: MediaType(mime?[0] ?? 'image', mime?[1] ?? 'jpeg'),
+          ),
+        );
+      }
+
+      debugPrint('Sending batch POST request with ${images.length} images...');
+
+      final streamedResponse = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 90));
+
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint('BATCH STATUS CODE: ${response.statusCode}');
+      debugPrint('RAW BATCH RESPONSE: ${response.body}');
+
+      final body = _decodeBody(response.body);
+
+      if (response.statusCode == 401) {
+        await SessionManager.clearAllUserData();
+        throw const ApiException('Session expired. Please log in again.');
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(_errorMessage(body));
+      }
+
+      debugPrint('Batch prediction parsed successfully (3-image average plaque calculated)');
+
+      return PlaquePrediction.fromJson(body);
+    } catch (e, stack) {
+      debugPrint('BATCH PREDICTION ERROR: $e');
+      debugPrint(stack.toString());
+
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(e.toString());
+    }
+  }
+
   Future<bool> isBackendHealthy() async {
     try {
       debugPrint('Checking backend health...');

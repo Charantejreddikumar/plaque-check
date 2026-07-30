@@ -69,10 +69,8 @@ class _AnalysisScreenState extends State<AnalysisScreen>
       return;
     }
 
-    final Map<String, Future<PlaquePrediction>> predictionFutures = {};
-    for (final entry in _imagesMap.entries) {
-      predictionFutures[entry.key] = _apiService.predictPlaque(entry.value);
-    }
+    final imageList = _imagesMap.values.toList();
+    final Future<PlaquePrediction> batchFuture = _apiService.predictPlaqueBatch(imageList);
 
     for (var i = 0; i < _stages.length; i++) {
       if (!mounted) {
@@ -87,39 +85,8 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     }
 
     try {
-      final List<PlaquePrediction> predictions = [];
-      for (final entry in predictionFutures.entries) {
-        final pred = await entry.value;
-        predictions.add(pred);
-      }
-
-      if (!mounted || predictions.isEmpty) {
-        return;
-      }
-
-      // Combine Multi-Angle Results
-      final primaryImage = _imagesMap.values.first;
-      final avgPlaque = (predictions.map((p) => p.plaquePercent).reduce((a, b) => a + b) / predictions.length).round();
-
-      String combinedSeverity = 'Low';
-      if (avgPlaque >= 45) {
-        combinedSeverity = 'High';
-      } else if (avgPlaque >= 20) {
-        combinedSeverity = 'Moderate';
-      }
-
-      final avgConfidence = predictions.map((p) => p.confidence).reduce((a, b) => a + b) / predictions.length;
-
-      final combinedPrediction = PlaquePrediction(
-        reportId: predictions.first.reportId,
-        imagePath: primaryImage.path,
-        processedImage: predictions.first.processedImage,
-        plaquePercent: avgPlaque,
-        severity: combinedSeverity,
-        confidence: double.parse(avgConfidence.toStringAsFixed(2)),
-        recommendation: predictions.first.recommendation,
-        timestamp: DateTime.now(),
-      );
+      final combinedPrediction = await batchFuture;
+      final primaryImage = imageList.first;
 
       try {
         final reportData = {

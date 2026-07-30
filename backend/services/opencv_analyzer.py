@@ -14,18 +14,21 @@ PROCESSED_DIR = Path(__file__).resolve().parents[1] / "processed"
 
 class OpenCVAnalyzer(Analyzer):
     def analyze(self, image_path: Path) -> dict:
-        logger.info("=== Starting OpenCV Fallback Pipeline Execution for %s ===", image_path.name)
+        logger.info("=== Starting OpenCV Fallback Pipeline Execution ===")
+        logger.info("[Stage 1/9] Image received: %s", image_path.name)
         image = cv2.imread(str(image_path))
         if image is None:
             logger.error("[Stage 1 Failed] Unable to read image file: %s", image_path)
-            raise ValueError("Please upload a clear image showing human teeth.")
+            raise ValueError("This is not a valid teeth image.\nPlaque analysis cannot be performed.\nPlease scan your teeth again.")
 
         validate_teeth_image(image)
+        logger.info("[Stage 2/9] Validation result: PASSED (dim: %dx%d)", image.shape[1], image.shape[0])
+
         teeth_roi, roi_rect = extract_teeth_roi(image)
-        logger.info("[Stage 2/11 PASSED] Teeth ROI extracted: rect=%s, shape=%s", roi_rect, teeth_roi.shape)
+        logger.info("Teeth ROI extracted: rect=%s, shape=%s", roi_rect, teeth_roi.shape)
 
         resized = _resize_for_analysis(teeth_roi)
-        logger.info("[Stage 3/11 PASSED] Resized image shape: %s", resized.shape)
+        logger.info("[Stage 3/9] Preprocessing: Resized image shape=%s", resized.shape)
 
         lab = cv2.cvtColor(resized, cv2.COLOR_BGR2LAB)
         clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
@@ -37,7 +40,8 @@ class OpenCVAnalyzer(Analyzer):
         gum_mask = _estimate_gum_regions(hsv)
 
         plaque_mask = _estimate_plaque_regions_hybrid(lab, hsv, tooth_mask, gum_mask)
-        logger.info("[Stage 8/11 PASSED] OpenCV Plaque Mask generated: plaque_pixels=%d", cv2.countNonZero(plaque_mask))
+        logger.info("[Stage 4/9] Inference: Plaque region estimation complete")
+        logger.info("[Stage 5/9] Softmax probabilities: N/A (OpenCV color histogram fallback)")
 
         overlay_path = _save_visual_outputs(image_path, resized, plaque_mask)
 
@@ -47,7 +51,6 @@ class OpenCVAnalyzer(Analyzer):
             0 if tooth_pixels == 0 else round((plaque_pixels / tooth_pixels) * 100)
         )
         plaque_percent = int(np.clip(plaque_percent, 0, 100))
-        logger.info("[Stage 9/11 PASSED] Plaque Percentage calculated from pixel ratio: %d%%", plaque_percent)
 
         if plaque_percent < 3:
             plaque_percent = 0
@@ -57,8 +60,12 @@ class OpenCVAnalyzer(Analyzer):
             severity = _severity_for(plaque_percent)
             recommendation = _recommendation_for(severity)
 
+        logger.info("[Stage 6/9] Predicted class: N/A (Severity=%s)", severity)
+
         confidence = _confidence_for(tooth_pixels, resized.shape[0] * resized.shape[1])
-        logger.info("[Stage 11/11 PASSED] Final Prediction: Plaque=%d%%, Severity=%s, Confidence=%.2f", plaque_percent, severity, confidence)
+        logger.info("[Stage 7/9] Confidence: %.2f", confidence)
+        logger.info("[Stage 8/9] Plaque percentage: %d%%", plaque_percent)
+        logger.info("[Stage 9/9] Final response: plaque_percent=%d%%, severity=%s, confidence=%.2f", plaque_percent, severity, confidence)
 
         return {
             "image_path": _relative_path(image_path),
