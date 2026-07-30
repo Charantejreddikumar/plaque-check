@@ -23,6 +23,6 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
-    expect(find.text('Welcome to PlaqueCheck'), findsOneWidget);
+    expect(find.text('PlaqueCheck Clinical Portal'), findsOneWidget);
   });
 }
