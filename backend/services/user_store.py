@@ -263,8 +263,9 @@ def init_user_database() -> None:
 
 def _migrate_legacy_users(cursor, db_type: str) -> None:
     now_str = datetime.now(timezone.utc).isoformat()
-    try:
-        if db_type == "postgres":
+    if db_type == "postgres":
+        try:
+            cursor.execute("SAVEPOINT migrate_sp")
             cursor.execute("SELECT id, name, email, password_hash, role, status, created_at FROM users")
             legacy_users = cursor.fetchall()
             for u in legacy_users:
@@ -284,7 +285,14 @@ def _migrate_legacy_users(cursor, db_type: str) -> None:
                         "INSERT INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO NOTHING",
                         (uid, name, email, pwd, status, cat, now_str),
                     )
-        else:
+            cursor.execute("RELEASE SAVEPOINT migrate_sp")
+        except Exception:
+            try:
+                cursor.execute("ROLLBACK TO SAVEPOINT migrate_sp")
+            except Exception:
+                pass
+    else:
+        try:
             cursor.execute("SELECT id, name, email, password_hash, role, status, created_at FROM users")
             legacy_users = cursor.fetchall()
             for u in legacy_users:
@@ -304,33 +312,42 @@ def _migrate_legacy_users(cursor, db_type: str) -> None:
                         "INSERT OR IGNORE INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                         (uid, name, email, pwd, status, cat, now_str),
                     )
-    except Exception:
-        pass
+        except Exception:
+            pass
 
 
 def _seed_default_admin_internal(cursor, db_type: str) -> None:
     admin_email = "admin@plaquecheck.com"
     now_str = datetime.now(timezone.utc).isoformat()
     if db_type == "postgres":
-        cursor.execute("SELECT id FROM admin_users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
-        row = cursor.fetchone()
+        try:
+            cursor.execute("SAVEPOINT seed_sp")
+            cursor.execute("SELECT id FROM admin_users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
+            row = cursor.fetchone()
+
+            if not row:
+                admin_pass = pwd_context.hash("password123")
+                cursor.execute(
+                    "INSERT INTO admin_users (name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, 'active', %s, %s) RETURNING id",
+                    ("System Admin", admin_email, admin_pass, now_str, now_str),
+                )
+                aid = cursor.fetchone()[0]
+                cursor.execute(
+                    "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'administrator', 'active', %s) ON CONFLICT (email) DO NOTHING",
+                    (aid, "System Admin", admin_email, admin_pass, now_str),
+                )
+            cursor.execute("RELEASE SAVEPOINT seed_sp")
+        except Exception:
+            try:
+                cursor.execute("ROLLBACK TO SAVEPOINT seed_sp")
+            except Exception:
+                pass
     else:
         cursor.execute("SELECT id FROM admin_users WHERE LOWER(email) = LOWER(?)", (admin_email,))
         row = cursor.fetchone()
 
-    if not row:
-        admin_pass = pwd_context.hash("password123")
-        if db_type == "postgres":
-            cursor.execute(
-                "INSERT INTO admin_users (name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, 'active', %s, %s) RETURNING id",
-                ("System Admin", admin_email, admin_pass, now_str, now_str),
-            )
-            aid = cursor.fetchone()[0]
-            cursor.execute(
-                "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'administrator', 'active', %s) ON CONFLICT DO NOTHING",
-                (aid, "System Admin", admin_email, admin_pass, now_str),
-            )
-        else:
+        if not row:
+            admin_pass = pwd_context.hash("password123")
             cursor.execute(
                 "INSERT INTO admin_users (name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)",
                 ("System Admin", admin_email, admin_pass, now_str, now_str),

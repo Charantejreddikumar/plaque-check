@@ -61,22 +61,33 @@ def get_db_type() -> str:
 @contextmanager
 def get_db_connection(db_name: str = "plaquecheck.db"):
     url = _get_clean_database_url()
+    conn = None
     if url:
         try:
             conn = psycopg2.connect(url, connect_timeout=10)
-            try:
-                yield ("postgres", conn)
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-            finally:
-                conn.close()
-            return
-        except (psycopg2.OperationalError, psycopg2.Error) as exc:
+            conn.autocommit = False
+        except Exception as exc:
             logger.warning(
                 "Postgres connection failed (%s). Falling back to SQLite.", exc
             )
+            conn = None
+
+    if conn:
+        try:
+            yield ("postgres", conn)
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+        return
 
     LOCAL_DB_DIR.mkdir(parents=True, exist_ok=True)
     db_path = LOCAL_DB_DIR / db_name
