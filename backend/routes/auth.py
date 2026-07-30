@@ -104,7 +104,7 @@ def register(payload: RegisterRequest) -> dict:
         ) from exc
 
     logger.info("[AUTH SUCCESS] Patient registration success for email: %s (User ID: %s)", email, user["id"])
-    return {"success": True, "message": "Account created successfully"}
+    return {"success": True, "message": "Account created"}
 
 
 @router.post("/register/doctor")
