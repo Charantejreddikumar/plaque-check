@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 
+import 'screens/admin_dashboard_screen.dart';
 import 'screens/analysis_screen.dart';
 import 'screens/comparison_screen.dart';
 import 'screens/crop_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/developer_settings_screen.dart';
+import 'screens/doctor_dashboard_screen.dart';
+import 'screens/doctor_register_screen.dart';
+import 'screens/doctor_review_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/preview_screen.dart';
-import 'screens/profile_screen.dart';
 import 'screens/privacy_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/result_screen.dart';
-import 'screens/scan_reminders_screen.dart';
 import 'screens/scan_instruction_screen.dart';
+import 'screens/scan_reminders_screen.dart';
 import 'screens/scan_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
@@ -53,8 +57,12 @@ class PlaqueCheckApp extends StatelessWidget {
             '/splash': (_) => const SplashScreen(),
             '/login': (_) => const LoginScreen(),
             '/register': (_) => const RegisterScreen(),
+            '/register-doctor': (_) => const DoctorRegisterScreen(),
             '/forgot-password': (_) => const ForgotPasswordScreen(),
             '/dashboard': (_) => const DashboardScreen(),
+            '/doctor-dashboard': (_) => const DoctorDashboardScreen(),
+            '/doctor-review': (_) => const DoctorReviewScreen(),
+            '/admin-dashboard': (_) => const AdminDashboardScreen(),
             '/scan-instructions': (_) => const ScanInstructionScreen(),
             '/scan': (_) => const ScanScreen(),
             '/crop': (_) => const CropScreen(),

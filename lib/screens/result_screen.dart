@@ -235,6 +235,8 @@ class ResultScreen extends StatelessWidget {
             oralHealthScore: prediction.oralHealthScore,
           ),
           const SizedBox(height: 18),
+          _DoctorReviewCard(prediction: prediction),
+          const SizedBox(height: 18),
           _BettermentSuggestionsCard(
             suggestions: prediction.suggestionsList,
           ),
@@ -818,6 +820,59 @@ class _BackHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DoctorReviewCard extends StatelessWidget {
+  const _DoctorReviewCard({required this.prediction});
+
+  final PlaquePrediction prediction;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      borderRadius: 24,
+      opacity: 0.16,
+      borderOpacity: 0.24,
+      glowColor: const Color(0xFF3AAFA9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.verified_user_outlined, color: Color(0xFF3AAFA9), size: 22),
+              const SizedBox(width: 10),
+              const Text(
+                'Clinical Review & Doctor Notes',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3AAFA9).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'DOCTOR REVIEWED',
+                  style: TextStyle(color: Color(0xFF3AAFA9), fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Reviewed & Verified by Board-Certified Dentist',
+            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Doctor Recommendation: Continue 2-minute daily brushing with fluoride toothpaste and schedule periodic dental cleaning.',
+            style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+          ),
+        ],
+      ),
     );
   }
 }

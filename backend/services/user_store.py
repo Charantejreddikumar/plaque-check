@@ -3,8 +3,11 @@ import secrets
 from datetime import datetime, timezone
 import sqlite3
 from psycopg2.extras import RealDictCursor
+from passlib.context import CryptContext
 
 from services.db import get_db_connection
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def init_user_database() -> None:
@@ -18,6 +21,8 @@ def init_user_database() -> None:
                     name TEXT NOT NULL,
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
+                    role TEXT NOT NULL DEFAULT 'patient',
+                    status TEXT NOT NULL DEFAULT 'active',
                     created_at TEXT NOT NULL
                 )
                 """
@@ -31,6 +36,61 @@ def init_user_database() -> None:
                 )
                 """
             )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS doctors (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    mobile TEXT,
+                    qualification TEXT,
+                    specialization TEXT,
+                    registration_number TEXT,
+                    clinic_name TEXT,
+                    hospital_name TEXT,
+                    approval_status TEXT NOT NULL DEFAULT 'pending_approval',
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS patients (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    age INTEGER,
+                    gender TEXT,
+                    phone TEXT,
+                    medical_history TEXT,
+                    profile_picture TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    type TEXT NOT NULL DEFAULT 'info',
+                    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER,
+                    action TEXT NOT NULL,
+                    details TEXT,
+                    ip_address TEXT,
+                    timestamp TEXT NOT NULL
+                )
+                """
+            )
         else:
             cursor.execute(
                 """
@@ -39,6 +99,8 @@ def init_user_database() -> None:
                     name TEXT NOT NULL,
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
+                    role TEXT NOT NULL DEFAULT 'patient',
+                    status TEXT NOT NULL DEFAULT 'active',
                     created_at TEXT NOT NULL
                 )
                 """
@@ -53,9 +115,100 @@ def init_user_database() -> None:
                 )
                 """
             )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS doctors (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    mobile TEXT,
+                    qualification TEXT,
+                    specialization TEXT,
+                    registration_number TEXT,
+                    clinic_name TEXT,
+                    hospital_name TEXT,
+                    approval_status TEXT NOT NULL DEFAULT 'pending_approval',
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS patients (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    age INTEGER,
+                    gender TEXT,
+                    phone TEXT,
+                    medical_history TEXT,
+                    profile_picture TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    type TEXT NOT NULL DEFAULT 'info',
+                    is_read INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    action TEXT NOT NULL,
+                    details TEXT,
+                    ip_address TEXT,
+                    timestamp TEXT NOT NULL
+                )
+                """
+            )
+
+        # Migration columns check for existing DBs
+        for col_name, col_type in [("role", "TEXT NOT NULL DEFAULT 'patient'"), ("status", "TEXT NOT NULL DEFAULT 'active'")]:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass
+
+        _seed_default_admin_internal(cursor, db_type)
 
 
-def create_user(name: str, email: str, password_hash: str) -> dict:
+def _seed_default_admin_internal(cursor, db_type: str) -> None:
+    admin_email = "admin@plaquecheck.com"
+    if db_type == "postgres":
+        cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
+        row = cursor.fetchone()
+    else:
+        cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (admin_email,))
+        row = cursor.fetchone()
+
+    if not row:
+        admin_pass = pwd_context.hash("password123")
+        created_at = datetime.now(timezone.utc).isoformat()
+        if db_type == "postgres":
+            cursor.execute(
+                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, 'administrator', 'active', %s)",
+                ("System Admin", admin_email, admin_pass, created_at),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, 'administrator', 'active', ?)",
+                ("System Admin", admin_email, admin_pass, created_at),
+            )
+
+
+def create_user(name: str, email: str, password_hash: str, role: str = "patient", status: str = "active") -> dict:
     init_user_database()
     created_at = datetime.now(timezone.utc).isoformat()
     with get_db_connection("users.db") as (db_type, conn):
@@ -63,29 +216,124 @@ def create_user(name: str, email: str, password_hash: str) -> dict:
         if db_type == "postgres":
             cursor.execute(
                 """
-                INSERT INTO users (name, email, password_hash, created_at)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO users (name, email, password_hash, role, status, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
-                (name, email, password_hash, created_at),
+                (name, email, password_hash, role, status, created_at),
             )
             user_id = cursor.fetchone()[0]
         else:
             cursor.execute(
                 """
-                INSERT INTO users (name, email, password_hash, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO users (name, email, password_hash, role, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (name, email, password_hash, created_at),
+                (name, email, password_hash, role, status, created_at),
             )
             user_id = cursor.lastrowid
+
+        if role == "patient":
+            _init_patient_profile(cursor, db_type, user_id, created_at)
 
     return {
         "id": user_id,
         "name": name,
         "email": email,
+        "role": role,
+        "status": status,
         "created_at": created_at,
     }
+
+
+def create_doctor(
+    user_id: int,
+    mobile: str,
+    qualification: str,
+    specialization: str,
+    registration_number: str,
+    clinic_name: str,
+    hospital_name: str,
+) -> dict:
+    init_user_database()
+    created_at = datetime.now(timezone.utc).isoformat()
+    with get_db_connection("users.db") as (db_type, conn):
+        cursor = conn.cursor()
+        if db_type == "postgres":
+            cursor.execute(
+                """
+                INSERT INTO doctors (
+                    user_id, mobile, qualification, specialization,
+                    registration_number, clinic_name, hospital_name, approval_status, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending_approval', %s)
+                RETURNING id
+                """,
+                (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, created_at),
+            )
+            doc_id = cursor.fetchone()[0]
+        else:
+            cursor.execute(
+                """
+                INSERT INTO doctors (
+                    user_id, mobile, qualification, specialization,
+                    registration_number, clinic_name, hospital_name, approval_status, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_approval', ?)
+                """,
+                (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, created_at),
+            )
+            doc_id = cursor.lastrowid
+    return {"doctor_id": doc_id, "user_id": user_id, "approval_status": "pending_approval"}
+
+
+def get_doctor_profile(user_id: int) -> dict | None:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute(
+                """
+                SELECT users.id as user_id, users.name, users.email, users.role, users.status,
+                       doctors.id as doctor_id, doctors.mobile, doctors.qualification,
+                       doctors.specialization, doctors.registration_number, doctors.clinic_name,
+                       doctors.hospital_name, doctors.approval_status
+                FROM users
+                LEFT JOIN doctors ON doctors.user_id = users.id
+                WHERE users.id = %s
+                """,
+                (user_id,),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        else:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                """
+                SELECT users.id as user_id, users.name, users.email, users.role, users.status,
+                       doctors.id as doctor_id, doctors.mobile, doctors.qualification,
+                       doctors.specialization, doctors.registration_number, doctors.clinic_name,
+                       doctors.hospital_name, doctors.approval_status
+                FROM users
+                LEFT JOIN doctors ON doctors.user_id = users.id
+                WHERE users.id = ?
+                """,
+                (user_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+
+def _init_patient_profile(cursor, db_type, user_id: int, created_at: str):
+    if db_type == "postgres":
+        cursor.execute(
+            "INSERT INTO patients (user_id, created_at) VALUES (%s, %s)",
+            (user_id, created_at),
+        )
+    else:
+        cursor.execute(
+            "INSERT INTO patients (user_id, created_at) VALUES (?, ?)",
+            (user_id, created_at),
+        )
 
 
 def find_user_by_email(email: str) -> dict | None:
@@ -95,11 +343,7 @@ def find_user_by_email(email: str) -> dict | None:
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
-                """
-                SELECT id, name, email, password_hash, created_at
-                FROM users
-                WHERE LOWER(email) = LOWER(%s)
-                """,
+                "SELECT id, name, email, password_hash, role, status, created_at FROM users WHERE LOWER(email) = LOWER(%s)",
                 (target_email,),
             )
             row = cursor.fetchone()
@@ -107,15 +351,10 @@ def find_user_by_email(email: str) -> dict | None:
         else:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
-                """
-                SELECT id, name, email, password_hash, created_at
-                FROM users
-                WHERE LOWER(email) = LOWER(?)
-                """,
+                "SELECT id, name, email, password_hash, role, status, created_at FROM users WHERE LOWER(email) = LOWER(?)",
                 (target_email,),
             ).fetchone()
             return dict(row) if row else None
-
 
 
 def create_session(user_id: int) -> str:
@@ -148,7 +387,6 @@ def create_session(user_id: int) -> str:
 def find_user_by_token(token: str) -> dict | None:
     if not token:
         return None
-
     init_user_database()
     token_hash = _hash_token(token)
     with get_db_connection("users.db") as (db_type, conn):
@@ -156,7 +394,7 @@ def find_user_by_token(token: str) -> dict | None:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
                 """
-                SELECT users.id, users.name, users.email, users.created_at
+                SELECT users.id, users.name, users.email, users.role, users.status, users.created_at
                 FROM sessions
                 JOIN users ON users.id = sessions.user_id
                 WHERE sessions.token_hash = %s
@@ -169,7 +407,7 @@ def find_user_by_token(token: str) -> dict | None:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
                 """
-                SELECT users.id, users.name, users.email, users.created_at
+                SELECT users.id, users.name, users.email, users.role, users.status, users.created_at
                 FROM sessions
                 JOIN users ON users.id = sessions.user_id
                 WHERE sessions.token_hash = ?
@@ -189,6 +427,189 @@ def delete_session(token: str) -> None:
             cursor.execute("DELETE FROM sessions WHERE token_hash = %s", (token_hash,))
         else:
             cursor.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
+
+
+def list_users() -> list[dict]:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("SELECT id, name, email, role, status, created_at FROM users ORDER BY id DESC")
+            return [dict(r) for r in cursor.fetchall()]
+        else:
+            conn.row_factory = sqlite3.Row
+            return [dict(r) for r in conn.execute("SELECT id, name, email, role, status, created_at FROM users ORDER BY id DESC").fetchall()]
+
+
+def list_doctors() -> list[dict]:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute(
+                """
+                SELECT users.id as user_id, users.name, users.email, users.status, doctors.id as doctor_id,
+                       doctors.qualification, doctors.specialization, doctors.registration_number,
+                       doctors.clinic_name, doctors.hospital_name, doctors.approval_status
+                FROM users
+                JOIN doctors ON doctors.user_id = users.id
+                ORDER BY doctors.id DESC
+                """
+            )
+            return [dict(r) for r in cursor.fetchall()]
+        else:
+            conn.row_factory = sqlite3.Row
+            return [dict(r) for r in conn.execute(
+                """
+                SELECT users.id as user_id, users.name, users.email, users.status, doctors.id as doctor_id,
+                       doctors.qualification, doctors.specialization, doctors.registration_number,
+                       doctors.clinic_name, doctors.hospital_name, doctors.approval_status
+                FROM users
+                JOIN doctors ON doctors.user_id = users.id
+                ORDER BY doctors.id DESC
+                """
+            ).fetchall()]
+
+
+def approve_doctor(user_id: int) -> bool:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        cursor = conn.cursor()
+        if db_type == "postgres":
+            cursor.execute("UPDATE users SET status = 'active' WHERE id = %s AND role = 'doctor'", (user_id,))
+            cursor.execute("UPDATE doctors SET approval_status = 'approved' WHERE user_id = %s", (user_id,))
+        else:
+            cursor.execute("UPDATE users SET status = 'active' WHERE id = ? AND role = 'doctor'", (user_id,))
+            cursor.execute("UPDATE doctors SET approval_status = 'approved' WHERE user_id = ?", (user_id,))
+    return True
+
+
+def deactivate_user(user_id: int) -> bool:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        cursor = conn.cursor()
+        if db_type == "postgres":
+            cursor.execute("UPDATE users SET status = 'deactivated' WHERE id = %s", (user_id,))
+        else:
+            cursor.execute("UPDATE users SET status = 'deactivated' WHERE id = ?", (user_id,))
+    return True
+
+
+def get_patient_profile(user_id: int) -> dict | None:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute(
+                """
+                SELECT users.id as user_id, users.name, users.email, users.role, patients.age, patients.gender, patients.phone, patients.medical_history, patients.profile_picture
+                FROM users
+                LEFT JOIN patients ON patients.user_id = users.id
+                WHERE users.id = %s
+                """,
+                (user_id,),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        else:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                """
+                SELECT users.id as user_id, users.name, users.email, users.role, patients.age, patients.gender, patients.phone, patients.medical_history, patients.profile_picture
+                FROM users
+                LEFT JOIN patients ON patients.user_id = users.id
+                WHERE users.id = ?
+                """,
+                (user_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+
+def update_patient_profile(user_id: int, age: int | None, gender: str, phone: str, medical_history: str) -> dict:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        cursor = conn.cursor()
+        if db_type == "postgres":
+            cursor.execute(
+                """
+                INSERT INTO patients (user_id, age, gender, phone, medical_history, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE
+                SET age = EXCLUDED.age, gender = EXCLUDED.gender, phone = EXCLUDED.phone, medical_history = EXCLUDED.medical_history
+                """,
+                (user_id, age, gender, phone, medical_history, datetime.now(timezone.utc).isoformat()),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE patients
+                SET age = ?, gender = ?, phone = ?, medical_history = ?
+                WHERE user_id = ?
+                """,
+                (age, gender, phone, medical_history, user_id),
+            )
+    return get_patient_profile(user_id) or {}
+
+
+def create_notification(user_id: int, title: str, message: str, notif_type: str = "info") -> dict:
+    init_user_database()
+    created_at = datetime.now(timezone.utc).isoformat()
+    with get_db_connection("users.db") as (db_type, conn):
+        cursor = conn.cursor()
+        if db_type == "postgres":
+            cursor.execute(
+                "INSERT INTO notifications (user_id, title, message, type, created_at) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (user_id, title, message, notif_type, created_at),
+            )
+            nid = cursor.fetchone()[0]
+        else:
+            cursor.execute(
+                "INSERT INTO notifications (user_id, title, message, type, created_at) VALUES (?, ?, ?, ?, ?)",
+                (user_id, title, message, notif_type, created_at),
+            )
+            nid = cursor.lastrowid
+    return {"id": nid, "user_id": user_id, "title": title, "message": message, "type": notif_type, "is_read": False, "created_at": created_at}
+
+
+def get_user_notifications(user_id: int) -> list[dict]:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("SELECT * FROM notifications WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
+            return [dict(r) for r in cursor.fetchall()]
+        else:
+            conn.row_factory = sqlite3.Row
+            return [dict(r) for r in conn.execute("SELECT * FROM notifications WHERE user_id = ? ORDER BY datetime(created_at) DESC", (user_id,)).fetchall()]
+
+
+def log_audit_event(user_id: int | None, action: str, details: str = "", ip_address: str = "") -> None:
+    init_user_database()
+    timestamp = datetime.now(timezone.utc).isoformat()
+    with get_db_connection("users.db") as (db_type, conn):
+        cursor = conn.cursor()
+        if db_type == "postgres":
+            cursor.execute(
+                "INSERT INTO audit_logs (user_id, action, details, ip_address, timestamp) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, action, details, ip_address, timestamp),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO audit_logs (user_id, action, details, ip_address, timestamp) VALUES (?, ?, ?, ?, ?)",
+                (user_id, action, details, ip_address, timestamp),
+            )
+
+
+def get_audit_logs() -> list[dict]:
+    init_user_database()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100")
+            return [dict(r) for r in cursor.fetchall()]
+        else:
+            conn.row_factory = sqlite3.Row
+            return [dict(r) for r in conn.execute("SELECT * FROM audit_logs ORDER BY datetime(timestamp) DESC LIMIT 100").fetchall()]
 
 
 def _hash_token(token: str) -> str:

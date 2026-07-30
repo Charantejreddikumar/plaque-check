@@ -15,6 +15,9 @@ from routes.auth import router as auth_router
 from routes.media import router as media_router
 from routes.predict import router as predict_router
 from routes.reports import router as reports_router
+from routes.doctor import router as doctor_router
+from routes.admin import router as admin_router
+from routes.notifications import router as notifications_router
 from services.report_store import init_database
 from services.user_store import init_user_database
 from utils.logging_config import configure_logging
@@ -31,7 +34,7 @@ for runtime_dir in ("uploads", "processed", "logs"):
 configure_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="PlaqueCheck Backend", version="0.2.0")
+app = FastAPI(title="PlaqueCheck Backend", version="0.3.0")
 
 cors_env = os.getenv("CORS_ALLOW_ORIGINS", "")
 allowed_origins = [
@@ -109,6 +112,9 @@ app.include_router(reports_router)
 app.include_router(debug_router)
 app.include_router(auth_router)
 app.include_router(media_router)
+app.include_router(doctor_router)
+app.include_router(admin_router)
+app.include_router(notifications_router)
 
 
 @app.on_event("startup")

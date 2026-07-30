@@ -7,6 +7,7 @@ class SessionUser {
     required this.userId,
     required this.fullName,
     required this.email,
+    this.role = 'patient',
     this.accessToken = '',
   });
 
@@ -15,6 +16,7 @@ class SessionUser {
       userId: json['user_id'] as int? ?? json['userId'] as int? ?? 0,
       fullName: json['name'] as String? ?? json['fullName'] as String? ?? '',
       email: json['email'] as String? ?? '',
+      role: json['role'] as String? ?? 'patient',
       accessToken: json['access_token'] as String? ?? json['accessToken'] as String? ?? '',
     );
   }
@@ -24,6 +26,7 @@ class SessionUser {
       userId: json['user_id'] as int? ?? 0,
       fullName: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
+      role: json['role'] as String? ?? 'patient',
       accessToken: json['access_token'] as String? ?? '',
     );
   }
@@ -31,7 +34,12 @@ class SessionUser {
   final int userId;
   final String fullName;
   final String email;
+  final String role;
   final String accessToken;
+
+  bool get isDoctor => role == 'doctor';
+  bool get isAdmin => role == 'administrator';
+  bool get isPatient => role == 'patient';
 
   String get initials {
     final parts = fullName
@@ -55,6 +63,7 @@ class SessionUser {
       'user_id': userId,
       'name': fullName,
       'email': email,
+      'role': role,
       'access_token': accessToken,
     };
   }
@@ -66,6 +75,7 @@ class SessionManager {
   static const _userIdKey = 'user_id';
   static const _nameKey = 'name';
   static const _emailKey = 'email';
+  static const _roleKey = 'role';
   static const _accessTokenKey = 'access_token';
 
   static Future<SessionUser?> currentUser() async {
@@ -95,6 +105,7 @@ class SessionManager {
       userId: prefs.getInt(_userIdKey) ?? 0,
       fullName: prefs.getString(_nameKey) ?? '',
       email: email,
+      role: prefs.getString(_roleKey) ?? 'patient',
       accessToken: prefs.getString(_accessTokenKey) ?? '',
     );
   }
@@ -105,18 +116,20 @@ class SessionManager {
     await prefs.setInt(_userIdKey, user.userId);
     await prefs.setString(_nameKey, user.fullName);
     await prefs.setString(_emailKey, user.email);
+    await prefs.setString(_roleKey, user.role);
     await prefs.setString(_accessTokenKey, user.accessToken);
     await prefs.setString(_sessionKey, jsonEncode(user.toJson()));
   }
 
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionKey);
     await prefs.remove(_loginStateKey);
     await prefs.remove(_userIdKey);
     await prefs.remove(_nameKey);
     await prefs.remove(_emailKey);
+    await prefs.remove(_roleKey);
     await prefs.remove(_accessTokenKey);
-    await prefs.remove(_sessionKey);
   }
 
   static Future<void> clearAllUserData() async {
@@ -124,28 +137,17 @@ class SessionManager {
     await prefs.clear();
   }
 
-  static Future<String?> currentUserReportsKey() async {
-    final user = await currentUser();
-    if (user == null || user.userId <= 0) {
-      return null;
-    }
-    return 'scan_reports_user_${user.userId}';
-  }
-
   static Future<List<String>> getReportsForCurrentUser() async {
+    final user = await currentUser();
+    if (user == null) return [];
     final prefs = await SharedPreferences.getInstance();
-    final key = await currentUserReportsKey();
-    if (key == null) {
-      return [];
-    }
-    return prefs.getStringList(key) ?? [];
+    return prefs.getStringList('user_reports_${user.userId}') ?? [];
   }
 
   static Future<void> saveReportsForCurrentUser(List<String> reports) async {
+    final user = await currentUser();
+    if (user == null) return;
     final prefs = await SharedPreferences.getInstance();
-    final key = await currentUserReportsKey();
-    if (key != null) {
-      await prefs.setStringList(key, reports);
-    }
+    await prefs.setStringList('user_reports_${user.userId}', reports);
   }
 }

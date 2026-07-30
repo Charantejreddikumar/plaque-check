@@ -18,8 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+
+  String _selectedRole = 'patient'; // 'patient', 'doctor', 'administrator'
   bool _obscurePassword = true;
-  bool _rememberSession = false;
   bool _isLoading = false;
 
   @override
@@ -42,22 +43,23 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       await SessionManager.clearAllUserData();
       await SessionManager.saveSession(user);
-      if (!mounted) {
-        return;
+      if (!mounted) return;
+
+      if (user.role == 'doctor') {
+        Navigator.pushReplacementNamed(context, '/doctor-dashboard');
+      } else if (user.role == 'administrator') {
+        Navigator.pushReplacementNamed(context, '/admin-dashboard');
+      } else {
+        Navigator.pushReplacementNamed(context, '/dashboard');
       }
-      Navigator.pushReplacementNamed(context, '/dashboard');
     } on AuthException catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(_authSnackBar(error.message));
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(_authSnackBar('Unable to login. Please try again.'));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        _authSnackBar(e.toString().replaceAll('ApiException: ', '').trim()),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -72,25 +74,59 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _AuthLogo(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           Text(
-            'Welcome to PlaqueCheck',
+            'PlaqueCheck Clinical Portal',
             style: TextStyle(
               color: AppTheme.textPrimary(context),
               fontSize: 26,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            'Sign in to continue your dental AI tracking.',
+            'Select your role to log into your workspace.',
             style: TextStyle(
               color: AppTheme.textSecondary(context),
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+
+          // Role Selector Tabs
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: Row(
+              children: [
+                _RoleTab(
+                  label: 'Patient',
+                  icon: Icons.person_outline,
+                  isSelected: _selectedRole == 'patient',
+                  onTap: () => setState(() => _selectedRole = 'patient'),
+                ),
+                _RoleTab(
+                  label: 'Doctor',
+                  icon: Icons.medical_services_outlined,
+                  isSelected: _selectedRole == 'doctor',
+                  onTap: () => setState(() => _selectedRole = 'doctor'),
+                ),
+                _RoleTab(
+                  label: 'Admin',
+                  icon: Icons.admin_panel_settings_outlined,
+                  isSelected: _selectedRole == 'administrator',
+                  onTap: () => setState(() => _selectedRole = 'administrator'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
           GlassCard(
             borderRadius: 32,
             opacity: 0.14,
@@ -104,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     validator: _validateEmail,
-                    decoration: _inputDecoration('Email', Icons.email_outlined),
+                    decoration: _inputDecoration('Email Address', Icons.email_outlined),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -124,42 +160,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           _obscurePassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
-                          color: const Color(0xFF69C7C3),
+                          color: const Color(0xFF3AAFA9),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _rememberSession,
-                        activeColor: const Color(0xFF3BA7A4),
-                        onChanged: (value) {
-                          setState(() => _rememberSession = value ?? false);
-                        },
-                      ),
-                      Expanded(
-                        child: Text(
-                          'Remember session',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary(context),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      _AuthTextButton(
-                        text: 'Forgot password?',
-                        onTap: () =>
-                            Navigator.pushNamed(context, '/forgot-password'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 24),
                   GlassButton(
-                    label: _isLoading ? 'Logging in...' : 'Login',
-                    icon: Icons.login,
+                    label: _isLoading
+                        ? 'Authenticating...'
+                        : 'Sign In as ${_selectedRole.toUpperCase()}',
+                    icon: Icons.arrow_forward_rounded,
                     isPrimary: true,
                     onPressed: _isLoading ? () {} : _login,
                   ),
@@ -167,27 +178,142 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 22),
-          Center(
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
+          const SizedBox(height: 20),
+
+          // Footer links
+          if (_selectedRole == 'doctor') ...[
+            Center(
+              child: TextButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/register-doctor'),
+                icon: const Icon(Icons.medical_information_outlined, color: Color(0xFF3AAFA9)),
+                label: const Text(
+                  'Doctor Registration Request',
+                  style: TextStyle(color: Color(0xFF3AAFA9), fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ] else if (_selectedRole == 'patient') ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'New user? ',
+                  "Don't have a patient account? ",
                   style: TextStyle(
                     color: AppTheme.textSecondary(context),
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
                   ),
                 ),
-                _AuthTextButton(
-                  text: 'Create account',
+                GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/register'),
+                  child: const Text(
+                    'Sign Up',
+                    style: TextStyle(
+                      color: Color(0xFF3AAFA9),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
+          ] else ...[
+            Center(
+              child: Text(
+                'Default Admin: admin@plaquecheck.com / password123',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint, IconData icon, {Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, color: const Color(0xFF3AAFA9)),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.08),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Color(0xFF3AAFA9), width: 1.8),
+      ),
+    );
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Email is required.';
+    if (!value.contains('@')) return 'Enter a valid email address.';
+    return null;
+  }
+
+  String? _validateRequiredPassword(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Password is required.';
+    return null;
+  }
+
+  SnackBar _authSnackBar(String message) {
+    return SnackBar(
+      backgroundColor: const Color(0xFF1E293B),
+      content: Text(message, style: const TextStyle(color: Colors.white)),
+    );
+  }
+}
+
+class _RoleTab extends StatelessWidget {
+  const _RoleTab({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF2B7A78) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -206,15 +332,9 @@ class _AuthScaffold extends StatelessWidget {
         height: double.infinity,
         decoration: AppTheme.pageDecoration(context),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: child,
-              ),
-            ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: child,
           ),
         ),
       ),
@@ -227,120 +347,27 @@ class _AuthLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 74,
-        height: 74,
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF2B7A78).withValues(alpha: 0.22),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
-            ),
-          ],
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2B7A78).withValues(alpha: 0.3),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.biotech, color: Color(0xFF3AAFA9), size: 30),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Image.asset(
-            'assets/images/app_logo.png',
-            width: 62,
-            height: 62,
-            fit: BoxFit.contain,
+        const SizedBox(width: 12),
+        const Text(
+          'PlaqueCheck',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
           ),
         ),
-      ),
+      ],
     );
   }
-}
-
-class _AuthTextButton extends StatelessWidget {
-  const _AuthTextButton({required this.text, required this.onTap});
-
-  final String text;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Color(0xFF69C7C3),
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-InputDecoration _inputDecoration(
-  String label,
-  IconData icon, {
-  Widget? suffixIcon,
-}) {
-  return InputDecoration(
-    labelText: label,
-    prefixIcon: Icon(icon, color: const Color(0xFF2B7A78)),
-    suffixIcon: suffixIcon,
-    filled: true,
-    fillColor: Colors.white.withValues(alpha: 0.1),
-    errorMaxLines: 2,
-    errorStyle: const TextStyle(
-      color: Color(0xFFFCA5A5),
-      fontWeight: FontWeight.w600,
-    ),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFF2B7A78), width: 1.4),
-    ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFFFCA5A5), width: 1.2),
-    ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFFFCA5A5), width: 1.4),
-    ),
-  );
-}
-
-String? _validateEmail(String? value) {
-  final text = value?.trim() ?? '';
-  if (text.isEmpty) {
-    return 'Email is required.';
-  }
-  final emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-  if (!emailPattern.hasMatch(text)) {
-    return 'Enter a valid email address.';
-  }
-  return null;
-}
-
-String? _validateRequiredPassword(String? value) {
-  if ((value ?? '').isEmpty) {
-    return 'Password is required.';
-  }
-  return null;
-}
-
-SnackBar _authSnackBar(String message) {
-  return SnackBar(
-    behavior: SnackBarBehavior.floating,
-    backgroundColor: const Color(0xFF3BA7A4),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-    content: Text(message),
-  );
 }

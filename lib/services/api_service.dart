@@ -226,6 +226,124 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> registerDoctor(Map<String, dynamic> doctorData) async {
+    final url = Uri.parse('$_baseUrl/register/doctor');
+    final response = await _client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(doctorData),
+    );
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<Map<String, dynamic>> fetchDoctorDashboard() async {
+    final url = Uri.parse('$_baseUrl/doctor/dashboard');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<List<dynamic>> searchPatients([String query = '']) async {
+    final url = Uri.parse('$_baseUrl/doctor/patients?query=$query');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
+  Future<List<dynamic>> fetchPendingReviews() async {
+    final url = Uri.parse('$_baseUrl/doctor/reports/pending');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
+  Future<Map<String, dynamic>> reviewReport(int reportId, Map<String, dynamic> reviewData) async {
+    final url = Uri.parse('$_baseUrl/doctor/reports/$reportId/review');
+    final headers = await _authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final response = await _client.post(url, headers: headers, body: jsonEncode(reviewData));
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<Map<String, dynamic>> fetchAdminDashboard() async {
+    final url = Uri.parse('$_baseUrl/admin/dashboard');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
+  Future<List<dynamic>> fetchDoctorsList() async {
+    final url = Uri.parse('$_baseUrl/admin/doctors');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
+  Future<bool> approveDoctor(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/doctors/$userId/approve');
+    final headers = await _authHeaders();
+    final response = await _client.post(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<bool> deactivateDoctor(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/doctors/$userId/deactivate');
+    final headers = await _authHeaders();
+    final response = await _client.post(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    return true;
+  }
+
+  Future<List<dynamic>> fetchAuditLogs() async {
+    final url = Uri.parse('$_baseUrl/admin/audit-logs');
+    final headers = await _authHeaders();
+    final response = await _client.get(url, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
+      throw ApiException(_errorMessage(body));
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
   String mediaUrl(String relativePath, {String? token}) {
     if (relativePath.isEmpty || relativePath.startsWith('http')) {
       return relativePath;

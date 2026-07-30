@@ -1,4 +1,5 @@
-from fastapi import Header, HTTPException, Query
+from typing import Callable
+from fastapi import Depends, Header, HTTPException, Query
 
 from services.user_store import find_user_by_token
 
@@ -20,5 +21,20 @@ def current_user(
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid session")
 
+    if user.get("status") == "deactivated":
+        raise HTTPException(status_code=403, detail="Account is deactivated")
+
     return user
 
+
+def require_role(allowed_roles: list[str]) -> Callable:
+    def dependency(user: dict = Depends(current_user)) -> dict:
+        user_role = user.get("role", "patient")
+        if user_role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access denied. Requires one of roles: {allowed_roles} (Current role: {user_role})",
+            )
+        return user
+
+    return dependency
