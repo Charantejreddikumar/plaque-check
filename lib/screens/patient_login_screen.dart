@@ -81,10 +81,10 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   '🧑 Patient Sign In',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.textPrimary(context),
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                   ),

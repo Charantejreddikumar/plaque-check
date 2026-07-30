@@ -24,16 +24,16 @@ class RoleSelectionScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2B7A78).withValues(alpha: 0.3),
+                    color: AppTheme.accent(context).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.biotech, color: Color(0xFF3AAFA9), size: 48),
+                  child: Icon(Icons.biotech, color: AppTheme.accent(context), size: 48),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'PlaqueCheck',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.textPrimary(context),
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.8,
@@ -51,24 +51,24 @@ class RoleSelectionScreen extends StatelessWidget {
                 const SizedBox(height: 36),
 
                 // Instruction Banner
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Select Your Portal Role',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.textPrimary(context),
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Choose your workspace to proceed to secure login.',
                     style: TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: AppTheme.textSecondary(context),
                       fontSize: 13,
                     ),
                   ),
@@ -81,7 +81,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   subtitle: 'Scan your teeth, track plaque AI scores, and view doctor recommendations.',
                   icon: Icons.person_rounded,
                   badge: '🧑 Patient',
-                  color: const Color(0xFF3AAFA9),
+                  color: AppTheme.isDark(context) ? const Color(0xFF3AAFA9) : const Color(0xFF2B7A78),
                   onTap: () => Navigator.pushNamed(context, '/patient-login'),
                 ),
                 const SizedBox(height: 16),
@@ -92,7 +92,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   subtitle: 'Review 3-image patient scans, override AI scores, write notes & prescribe treatment.',
                   icon: Icons.medical_services_rounded,
                   badge: '🩺 Doctor',
-                  color: const Color(0xFF3182CE),
+                  color: AppTheme.isDark(context) ? const Color(0xFF63B3ED) : const Color(0xFF2B6CB0),
                   onTap: () => Navigator.pushNamed(context, '/doctor-login'),
                 ),
                 const SizedBox(height: 16),
@@ -103,7 +103,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   subtitle: 'Approve doctor account applications, manage users, and inspect security audit logs.',
                   icon: Icons.admin_panel_settings_rounded,
                   badge: '🛡️ Administrator',
-                  color: const Color(0xFF805AD5),
+                  color: AppTheme.isDark(context) ? const Color(0xFFB794F4) : const Color(0xFF6B46C1),
                   onTap: () => Navigator.pushNamed(context, '/admin-login'),
                 ),
               ],
@@ -149,9 +149,9 @@ class _RoleSelectionCard extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                  border: Border.all(color: color.withValues(alpha: 0.35)),
                 ),
                 child: Icon(icon, color: color, size: 28),
               ),
@@ -175,8 +175,8 @@ class _RoleSelectionCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.textPrimary(context),
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                       ),
@@ -185,7 +185,7 @@ class _RoleSelectionCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: AppTheme.textSecondary(context),
                         fontSize: 12,
                         height: 1.3,
                       ),
@@ -193,7 +193,11 @@ class _RoleSelectionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 16),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: AppTheme.textSecondary(context),
+                size: 16,
+              ),
             ],
           ),
         ),

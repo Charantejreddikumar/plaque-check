@@ -88,10 +88,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   '🛡️ System Administrator Portal',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.textPrimary(context),
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                   ),
