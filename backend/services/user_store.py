@@ -14,6 +14,7 @@ def init_user_database() -> None:
     with get_db_connection("users.db") as (db_type, conn):
         cursor = conn.cursor()
         if db_type == "postgres":
+            # 1. Main unified legacy table
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS users (
@@ -27,6 +28,48 @@ def init_user_database() -> None:
                 )
                 """
             )
+            # 2. Three dedicated role auth tables
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS patient_users (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS doctor_users (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending_approval',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS admin_users (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+
+            # Clinical & Session tables
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS sessions (
@@ -107,6 +150,45 @@ def init_user_database() -> None:
             )
             cursor.execute(
                 """
+                CREATE TABLE IF NOT EXISTS patient_users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS doctor_users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending_approval',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS admin_users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS sessions (
                     token_hash TEXT PRIMARY KEY,
                     user_id INTEGER NOT NULL,
@@ -174,38 +256,174 @@ def init_user_database() -> None:
                 """
             )
 
-        # Migration columns check for existing DBs
-        for col_name, col_type in [("role", "TEXT NOT NULL DEFAULT 'patient'"), ("status", "TEXT NOT NULL DEFAULT 'active'")]:
-            try:
-                cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
-            except Exception:
-                pass
-
+        # Migration logic: Copy existing legacy users into dedicated role tables if missing
+        _migrate_legacy_users(cursor, db_type)
         _seed_default_admin_internal(cursor, db_type)
+
+
+def _migrate_legacy_users(cursor, db_type: str) -> None:
+    now_str = datetime.now(timezone.utc).isoformat()
+    try:
+        if db_type == "postgres":
+            cursor.execute("SELECT id, name, email, password_hash, role, status, created_at FROM users")
+            legacy_users = cursor.fetchall()
+            for u in legacy_users:
+                uid, name, email, pwd, role, status, cat = u
+                if role == "patient":
+                    cursor.execute(
+                        "INSERT INTO patient_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO NOTHING",
+                        (uid, name, email, pwd, status, cat, now_str),
+                    )
+                elif role == "doctor":
+                    cursor.execute(
+                        "INSERT INTO doctor_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO NOTHING",
+                        (uid, name, email, pwd, status, cat, now_str),
+                    )
+                elif role == "administrator":
+                    cursor.execute(
+                        "INSERT INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO NOTHING",
+                        (uid, name, email, pwd, status, cat, now_str),
+                    )
+        else:
+            cursor.execute("SELECT id, name, email, password_hash, role, status, created_at FROM users")
+            legacy_users = cursor.fetchall()
+            for u in legacy_users:
+                uid, name, email, pwd, role, status, cat = u[0], u[1], u[2], u[3], u[4], u[5], u[6]
+                if role == "patient":
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO patient_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (uid, name, email, pwd, status, cat, now_str),
+                    )
+                elif role == "doctor":
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO doctor_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (uid, name, email, pwd, status, cat, now_str),
+                    )
+                elif role == "administrator":
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (uid, name, email, pwd, status, cat, now_str),
+                    )
+    except Exception:
+        pass
 
 
 def _seed_default_admin_internal(cursor, db_type: str) -> None:
     admin_email = "admin@plaquecheck.com"
+    now_str = datetime.now(timezone.utc).isoformat()
     if db_type == "postgres":
-        cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
+        cursor.execute("SELECT id FROM admin_users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
         row = cursor.fetchone()
     else:
-        cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (admin_email,))
+        cursor.execute("SELECT id FROM admin_users WHERE LOWER(email) = LOWER(?)", (admin_email,))
         row = cursor.fetchone()
 
     if not row:
         admin_pass = pwd_context.hash("password123")
-        created_at = datetime.now(timezone.utc).isoformat()
         if db_type == "postgres":
             cursor.execute(
-                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, 'administrator', 'active', %s)",
-                ("System Admin", admin_email, admin_pass, created_at),
+                "INSERT INTO admin_users (name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, 'active', %s, %s) RETURNING id",
+                ("System Admin", admin_email, admin_pass, now_str, now_str),
+            )
+            aid = cursor.fetchone()[0]
+            cursor.execute(
+                "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'administrator', 'active', %s) ON CONFLICT DO NOTHING",
+                (aid, "System Admin", admin_email, admin_pass, now_str),
             )
         else:
             cursor.execute(
-                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, 'administrator', 'active', ?)",
-                ("System Admin", admin_email, admin_pass, created_at),
+                "INSERT INTO admin_users (name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)",
+                ("System Admin", admin_email, admin_pass, now_str, now_str),
             )
+            aid = cursor.lastrowid
+            cursor.execute(
+                "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, 'administrator', 'active', ?)",
+                (aid, "System Admin", admin_email, admin_pass, now_str),
+            )
+
+
+# Role-Isolated Lookup Functions
+def find_patient_user_by_email(email: str) -> dict | None:
+    init_user_database()
+    target = email.strip().lower()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM patient_users WHERE LOWER(email) = LOWER(%s)", (target,))
+            row = cursor.fetchone()
+            if row:
+                d = dict(row)
+                d["role"] = "patient"
+                return d
+            return None
+        else:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM patient_users WHERE LOWER(email) = LOWER(?)", (target,)).fetchone()
+            if row:
+                d = dict(row)
+                d["role"] = "patient"
+                return d
+            return None
+
+
+def find_doctor_user_by_email(email: str) -> dict | None:
+    init_user_database()
+    target = email.strip().lower()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM doctor_users WHERE LOWER(email) = LOWER(%s)", (target,))
+            row = cursor.fetchone()
+            if row:
+                d = dict(row)
+                d["role"] = "doctor"
+                return d
+            return None
+        else:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM doctor_users WHERE LOWER(email) = LOWER(?)", (target,)).fetchone()
+            if row:
+                d = dict(row)
+                d["role"] = "doctor"
+                return d
+            return None
+
+
+def find_admin_user_by_email(email: str) -> dict | None:
+    init_user_database()
+    target = email.strip().lower()
+    with get_db_connection("users.db") as (db_type, conn):
+        if db_type == "postgres":
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("SELECT id, name, email, password_hash, status, created_at FROM admin_users WHERE LOWER(email) = LOWER(%s)", (target,))
+            row = cursor.fetchone()
+            if row:
+                d = dict(row)
+                d["role"] = "administrator"
+                return d
+            return None
+        else:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute("SELECT id, name, email, password_hash, status, created_at FROM admin_users WHERE LOWER(email) = LOWER(?)", (target,)).fetchone()
+            if row:
+                d = dict(row)
+                d["role"] = "administrator"
+                return d
+            return None
+
+
+def find_user_by_email(email: str) -> dict | None:
+    # Check patient, doctor, and admin auth tables
+    p = find_patient_user_by_email(email)
+    if p:
+        return p
+    d = find_doctor_user_by_email(email)
+    if d:
+        return d
+    a = find_admin_user_by_email(email)
+    if a:
+        return a
+    return None
 
 
 def create_user(name: str, email: str, password_hash: str, role: str = "patient", status: str = "active") -> dict:
@@ -213,25 +431,33 @@ def create_user(name: str, email: str, password_hash: str, role: str = "patient"
     created_at = datetime.now(timezone.utc).isoformat()
     with get_db_connection("users.db") as (db_type, conn):
         cursor = conn.cursor()
+        if role == "patient":
+            table_name = "patient_users"
+        elif role == "doctor":
+            table_name = "doctor_users"
+        else:
+            table_name = "admin_users"
+
         if db_type == "postgres":
             cursor.execute(
-                """
-                INSERT INTO users (name, email, password_hash, role, status, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id
-                """,
-                (name, email, password_hash, role, status, created_at),
+                f"INSERT INTO {table_name} (name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+                (name, email, password_hash, status, created_at, created_at),
             )
             user_id = cursor.fetchone()[0]
+            cursor.execute(
+                "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role",
+                (user_id, name, email, password_hash, role, status, created_at),
+            )
         else:
             cursor.execute(
-                """
-                INSERT INTO users (name, email, password_hash, role, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (name, email, password_hash, role, status, created_at),
+                f"INSERT INTO {table_name} (name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (name, email, password_hash, status, created_at, created_at),
             )
             user_id = cursor.lastrowid
+            cursor.execute(
+                "INSERT OR REPLACE INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (user_id, name, email, password_hash, role, status, created_at),
+            )
 
         if role == "patient":
             _init_patient_profile(cursor, db_type, user_id, created_at)
@@ -334,27 +560,6 @@ def _init_patient_profile(cursor, db_type, user_id: int, created_at: str):
             "INSERT INTO patients (user_id, created_at) VALUES (?, ?)",
             (user_id, created_at),
         )
-
-
-def find_user_by_email(email: str) -> dict | None:
-    init_user_database()
-    target_email = email.strip().lower()
-    with get_db_connection("users.db") as (db_type, conn):
-        if db_type == "postgres":
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(
-                "SELECT id, name, email, password_hash, role, status, created_at FROM users WHERE LOWER(email) = LOWER(%s)",
-                (target_email,),
-            )
-            row = cursor.fetchone()
-            return dict(row) if row else None
-        else:
-            conn.row_factory = sqlite3.Row
-            row = conn.execute(
-                "SELECT id, name, email, password_hash, role, status, created_at FROM users WHERE LOWER(email) = LOWER(?)",
-                (target_email,),
-            ).fetchone()
-            return dict(row) if row else None
 
 
 def create_session(user_id: int) -> str:
@@ -477,9 +682,11 @@ def approve_doctor(user_id: int) -> bool:
         cursor = conn.cursor()
         if db_type == "postgres":
             cursor.execute("UPDATE users SET status = 'active' WHERE id = %s AND role = 'doctor'", (user_id,))
+            cursor.execute("UPDATE doctor_users SET status = 'active' WHERE id = %s", (user_id,))
             cursor.execute("UPDATE doctors SET approval_status = 'approved' WHERE user_id = %s", (user_id,))
         else:
             cursor.execute("UPDATE users SET status = 'active' WHERE id = ? AND role = 'doctor'", (user_id,))
+            cursor.execute("UPDATE doctor_users SET status = 'active' WHERE id = ?", (user_id,))
             cursor.execute("UPDATE doctors SET approval_status = 'approved' WHERE user_id = ?", (user_id,))
     return True
 
@@ -490,8 +697,12 @@ def deactivate_user(user_id: int) -> bool:
         cursor = conn.cursor()
         if db_type == "postgres":
             cursor.execute("UPDATE users SET status = 'deactivated' WHERE id = %s", (user_id,))
+            cursor.execute("UPDATE patient_users SET status = 'deactivated' WHERE id = %s", (user_id,))
+            cursor.execute("UPDATE doctor_users SET status = 'deactivated' WHERE id = %s", (user_id,))
         else:
             cursor.execute("UPDATE users SET status = 'deactivated' WHERE id = ?", (user_id,))
+            cursor.execute("UPDATE patient_users SET status = 'deactivated' WHERE id = ?", (user_id,))
+            cursor.execute("UPDATE doctor_users SET status = 'deactivated' WHERE id = ?", (user_id,))
     return True
 
 

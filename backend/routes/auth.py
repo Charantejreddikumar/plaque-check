@@ -15,6 +15,9 @@ from services.user_store import (
     create_session,
     create_user,
     delete_session,
+    find_admin_user_by_email,
+    find_doctor_user_by_email,
+    find_patient_user_by_email,
     find_user_by_email,
     get_doctor_profile,
     get_patient_profile,
@@ -69,6 +72,10 @@ def register(payload: RegisterRequest) -> dict:
             detail="Password must be at least 6 characters",
         )
 
+    # Check cross-role collision
+    if find_user_by_email(email):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
     password_hash = password_context.hash(payload.password)
 
     try:
@@ -110,6 +117,10 @@ def register_doctor(payload: DoctorRegisterRequest) -> dict:
     if not payload.registration_number.strip():
         raise HTTPException(status_code=400, detail="Medical Registration Number is required")
 
+    # Check cross-role collision
+    if find_user_by_email(email):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
     password_hash = password_context.hash(payload.password)
 
     try:
@@ -142,59 +153,108 @@ def register_doctor(payload: DoctorRegisterRequest) -> dict:
 @router.post("/login")
 def login(payload: LoginRequest) -> dict:
     email = payload.email.strip().lower()
-    user = find_user_by_email(email)
 
-    if user is None or not password_context.verify(payload.password, user["password_hash"]):
-        logger.info("Login failed: %s.", email)
+    if payload.role == "doctor":
+        return doctor_login(payload)
+    elif payload.role == "administrator" or payload.role == "admin":
+        return admin_login(payload)
+
+    return patient_login(payload)
+
+
+@router.post("/patient/login")
+def patient_login(payload: LoginRequest) -> dict:
+    email = payload.email.strip().lower()
+    user = find_patient_user_by_email(email)
+
+    if user is None:
+        # Check if registered under a different role
+        if find_doctor_user_by_email(email) or find_admin_user_by_email(email):
+            raise HTTPException(status_code=403, detail="This account is not registered as a patient.")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not password_context.verify(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if user["status"] == "deactivated":
         raise HTTPException(status_code=403, detail="Account deactivated. Please contact Administrator.")
 
-    if user["role"] == "doctor" and user["status"] == "pending_approval":
-        raise HTTPException(
-            status_code=403,
-            detail="Your Doctor account registration is pending Administrator approval. You will receive access once verified.",
-        )
-
     token = create_session(user["id"])
-    log_audit_event(user["id"], "LOGIN", f"User logged in as {user['role']}: {email}")
+    log_audit_event(user["id"], "LOGIN", f"Patient logged in: {email}")
 
-    logger.info("Login success: %s (Role: %s).", email, user["role"])
     return {
         "success": True,
         "user_id": user["id"],
         "name": user["name"],
         "email": user["email"],
-        "role": user["role"],
+        "role": "patient",
         "status": user["status"],
         "access_token": token,
         "token_type": "bearer",
     }
 
 
-@router.post("/patient/login")
-def patient_login(payload: LoginRequest) -> dict:
-    res = login(payload)
-    if res["role"] != "patient":
-        raise HTTPException(status_code=403, detail="This account is not registered as a Patient.")
-    return res
-
-
 @router.post("/doctor/login")
 def doctor_login(payload: LoginRequest) -> dict:
-    res = login(payload)
-    if res["role"] != "doctor":
-        raise HTTPException(status_code=403, detail="This account is not registered as a Doctor.")
-    return res
+    email = payload.email.strip().lower()
+    user = find_doctor_user_by_email(email)
+
+    if user is None:
+        if find_patient_user_by_email(email) or find_admin_user_by_email(email):
+            raise HTTPException(status_code=403, detail="This account is not registered as a doctor.")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not password_context.verify(payload.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if user["status"] == "deactivated":
+        raise HTTPException(status_code=403, detail="Account deactivated. Please contact Administrator.")
+
+    if user["status"] == "pending_approval":
+        raise HTTPException(
+            status_code=403,
+            detail="Your Doctor account registration is pending Administrator approval. You will receive access once verified.",
+        )
+
+    token = create_session(user["id"])
+    log_audit_event(user["id"], "LOGIN", f"Doctor logged in: {email}")
+
+    return {
+        "success": True,
+        "user_id": user["id"],
+        "name": user["name"],
+        "email": user["email"],
+        "role": "doctor",
+        "status": user["status"],
+        "access_token": token,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/admin/login")
 def admin_login(payload: LoginRequest) -> dict:
-    res = login(payload)
-    if res["role"] != "administrator":
+    email = payload.email.strip().lower()
+    user = find_admin_user_by_email(email)
+
+    if user is None:
         raise HTTPException(status_code=403, detail="This account is not authorized as an Administrator.")
-    return res
+
+    if not password_context.verify(payload.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    token = create_session(user["id"])
+    log_audit_event(user["id"], "LOGIN", f"Admin logged in: {email}")
+
+    return {
+        "success": True,
+        "user_id": user["id"],
+        "name": user["name"],
+        "email": user["email"],
+        "role": "administrator",
+        "status": user["status"],
+        "access_token": token,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/doctor/register")
