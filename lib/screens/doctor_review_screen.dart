@@ -87,7 +87,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Doctor Clinical Review submitted successfully! Patient notified.')),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,7 +98,9 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
     }
   }
 
-  void _showZoomImageModal(String title, String label) {
+  void _showZoomImageModal(String title, String? imagePath) {
+    final mediaUrl = (imagePath != null && imagePath.isNotEmpty) ? _apiService.mediaUrl(imagePath) : null;
+
     showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
@@ -109,7 +111,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
         ),
         child: Container(
           padding: const EdgeInsets.all(20),
-          constraints: const BoxConstraints(maxWidth: 600),
+          constraints: const BoxConstraints(maxWidth: 640),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -132,35 +134,23 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
               ),
               const SizedBox(height: 14),
               Container(
-                height: 320,
+                height: 360,
                 decoration: BoxDecoration(
                   color: AppTheme.secondarySurface(context),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: AppTheme.accent(context).withValues(alpha: 0.4)),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.zoom_in, color: AppTheme.accent(context), size: 48),
-                      const SizedBox(height: 10),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: AppTheme.textPrimary(context),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Dental Scan View Ready for Inspection',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary(context),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: mediaUrl != null
+                      ? InteractiveViewer(
+                          child: Image.network(
+                            mediaUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (ctx, _, __) => _buildUnavailablePlaceholder(context),
+                          ),
+                        )
+                      : _buildUnavailablePlaceholder(context),
                 ),
               ),
             ],
@@ -170,9 +160,31 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
     );
   }
 
+  Widget _buildUnavailablePlaceholder(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.broken_image_rounded, color: AppTheme.textSecondary(context), size: 48),
+          const SizedBox(height: 10),
+          Text(
+            'Image unavailable.',
+            style: TextStyle(
+              color: AppTheme.textPrimary(context),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final report = _reportDetails?['report'] as Map<String, dynamic>? ?? {};
+    final frontImg = report['processed_image'] ?? report['image_path'] ?? report['front_image'];
+    final leftImg = report['left_image'];
+    final rightImg = report['right_image'];
 
     return DoctorNavScaffold(
       currentRoute: '/doctor-dashboard',
@@ -230,11 +242,23 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _ScanImageCard(title: 'Front View', onTap: () => _showZoomImageModal('Front View Dental Scan', 'Frontal Teeth Alignment')),
+                      _ScanImageCard(
+                        title: 'Front View',
+                        imagePath: frontImg,
+                        onTap: () => _showZoomImageModal('Front View Dental Scan', frontImg),
+                      ),
                       const SizedBox(width: 12),
-                      _ScanImageCard(title: 'Left View', onTap: () => _showZoomImageModal('Left View Dental Scan', 'Left Buccal Teeth Segment')),
+                      _ScanImageCard(
+                        title: 'Left View',
+                        imagePath: leftImg,
+                        onTap: () => _showZoomImageModal('Left View Dental Scan', leftImg),
+                      ),
                       const SizedBox(width: 12),
-                      _ScanImageCard(title: 'Right View', onTap: () => _showZoomImageModal('Right View Dental Scan', 'Right Buccal Teeth Segment')),
+                      _ScanImageCard(
+                        title: 'Right View',
+                        imagePath: rightImg,
+                        onTap: () => _showZoomImageModal('Right View Dental Scan', rightImg),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -398,13 +422,20 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
 }
 
 class _ScanImageCard extends StatelessWidget {
-  const _ScanImageCard({required this.title, required this.onTap});
+  const _ScanImageCard({
+    required this.title,
+    required this.imagePath,
+    required this.onTap,
+  });
 
   final String title;
+  final String? imagePath;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final mediaUrl = (imagePath != null && imagePath!.isNotEmpty) ? ApiService().mediaUrl(imagePath!) : null;
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -421,8 +452,41 @@ class _ScanImageCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: AppTheme.accent(context).withValues(alpha: 0.3)),
                   ),
-                  child: Center(
-                    child: Icon(Icons.zoom_in_rounded, color: AppTheme.accent(context), size: 36),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: mediaUrl != null
+                        ? Image.network(
+                            mediaUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (ctx, _, __) => Center(
+                              child: Text(
+                                'Image unavailable.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary(context),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.zoom_in_rounded, color: AppTheme.accent(context), size: 28),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Inspect View',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary(context),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 8),

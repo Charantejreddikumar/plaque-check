@@ -28,16 +28,41 @@ class ReviewPayload(BaseModel):
 @router.get("/dashboard")
 def get_doctor_dashboard(user: dict = Depends(require_role(["doctor", "administrator"]))) -> dict:
     all_reports = list_all_reports()
-    pending = [r for r in all_reports if r.get("review_status") == "pending_review"]
-    completed = [r for r in all_reports if r.get("review_status") != "pending_review"]
-    high_risk = [r for r in all_reports if r.get("plaque_percent", 0) >= 50]
-
     all_users = list_users()
+    users_by_id = {u["id"]: u for u in all_users}
     patients = [u for u in all_users if u.get("role") == "patient"]
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    # Enrich reports with patient name and email
+    enriched_reports = []
+    for r in all_reports:
+        patient_info = users_by_id.get(r.get("user_id"), {})
+        enriched_reports.append({
+            **r,
+            "patient_name": patient_info.get("name", f"Patient #{r.get('user_id')}"),
+            "patient_email": patient_info.get("email", ""),
+        })
+
+    # 1. Today's patients scans
+    todays_patients = [
+        r for r in enriched_reports
+        if (r.get("timestamp") or "").startswith(today_str)
+    ]
+
+    # 2. Pending reviews queue: sorted by Highest Risk (plaque % desc), then Oldest Upload (timestamp asc)
+    pending = [r for r in enriched_reports if r.get("review_status") == "pending_review"]
+    pending.sort(key=lambda r: (-r.get("plaque_percent", 0), r.get("timestamp", "")))
+
+    # 3. High risk cases (>= 50% plaque), sorted by plaque % desc
+    high_risk = [r for r in enriched_reports if r.get("plaque_percent", 0) >= 50]
+    high_risk.sort(key=lambda r: -r.get("plaque_percent", 0))
+
+    completed = [r for r in enriched_reports if r.get("review_status") != "pending_review"]
 
     avg_score = 0
     if all_reports:
-        avg_score = int(round(sum(r["plaque_percent"] for r in all_reports) / len(all_reports)))
+        avg_score = int(round(sum(r.get("plaque_percent", 0) for r in all_reports) / len(all_reports)))
 
     return {
         "total_patients": len(patients),
@@ -46,7 +71,9 @@ def get_doctor_dashboard(user: dict = Depends(require_role(["doctor", "administr
         "high_risk_patients": len(high_risk),
         "average_plaque_score": avg_score,
         "recent_patients": patients[:5],
-        "pending_reports_list": pending[:10],
+        "pending_reports_list": pending,
+        "todays_patients": todays_patients,
+        "high_risk_cases": high_risk,
     }
 
 

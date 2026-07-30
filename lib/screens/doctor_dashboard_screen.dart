@@ -49,6 +49,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     final dateStr = '${_monthName(now.month)} ${now.day}, ${now.year}';
     final timeStr = '${now.hour.toString().padLeft(2, "0")}:${now.minute.toString().padLeft(2, "0")}';
 
+    final todaysPatients = (_dashboardData?["todays_patients"] as List?) ?? [];
+    final pendingQueue = (_dashboardData?["pending_reports_list"] as List?) ?? [];
+    final highRiskCases = (_dashboardData?["high_risk_cases"] as List?) ?? [];
+
     return DoctorNavScaffold(
       currentRoute: '/doctor-dashboard',
       title: 'PlaqueCheck Clinical Dashboard',
@@ -137,8 +141,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _OverviewMetricCard(
-                      title: "Today's Patients",
-                      value: '${_dashboardData?["total_patients"] ?? 0}',
+                      title: "Today's Scans",
+                      value: '${todaysPatients.length}',
                       icon: Icons.people_alt_rounded,
                       color: AppTheme.accent(context),
                     ),
@@ -164,9 +168,9 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Quick Action Buttons Row
+                // SECTION 1: TODAY'S PATIENTS
                 Text(
-                  'Quick Clinical Actions',
+                  "Today's Patients Scans & Reviews",
                   style: TextStyle(
                     color: AppTheme.textPrimary(context),
                     fontSize: 16,
@@ -174,44 +178,55 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ActionButton(
-                        label: 'Review Queue',
-                        icon: Icons.rate_review_rounded,
-                        color: AppTheme.accent(context),
-                        onTap: () {},
+                if (todaysPatients.isEmpty) ...[
+                  GlassCard(
+                    borderRadius: 18,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(
+                          "No patients for today.",
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ActionButton(
-                        label: 'Search Patients',
-                        icon: Icons.person_search_rounded,
-                        color: const Color(0xFF10B981),
-                        onTap: () => Navigator.pushNamed(context, '/doctor-patients'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ActionButton(
-                        label: 'View Analytics',
-                        icon: Icons.insights_rounded,
-                        color: const Color(0xFF805AD5),
-                        onTap: () => Navigator.pushNamed(context, '/doctor-analytics'),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ] else ...[
+                  ...todaysPatients.map((r) => _ReportRowCard(
+                        report: r,
+                        onReview: () => Navigator.pushNamed(context, '/doctor-review', arguments: r['report_id']).then((_) => _loadData()),
+                      )),
+                ],
                 const SizedBox(height: 28),
 
-                // Pending Reviews Queue Section
+                // SECTION 2: HIGH RISK CASES (>= 50% Plaque)
+                if (highRiskCases.isNotEmpty) ...[
+                  Text(
+                    'High Risk Cases (>= 50% Plaque Score)',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary(context),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...highRiskCases.take(5).map((r) => _ReportRowCard(
+                        report: r,
+                        isHighRisk: true,
+                        onReview: () => Navigator.pushNamed(context, '/doctor-review', arguments: r['report_id']).then((_) => _loadData()),
+                      )),
+                  const SizedBox(height: 28),
+                ],
+
+                // SECTION 3: PENDING REVIEWS QUEUE (Ordered by Risk & Upload Date)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Pending Dental Scans Waiting for Doctor Sign-Off',
+                      'Pending Clinical Review Queue',
                       style: TextStyle(
                         color: AppTheme.textPrimary(context),
                         fontSize: 16,
@@ -221,13 +236,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     TextButton.icon(
                       onPressed: () => Navigator.pushNamed(context, '/doctor-patients'),
                       icon: Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.accent(context)),
-                      label: Text('View All Patients', style: TextStyle(color: AppTheme.accent(context))),
+                      label: Text('View Directory', style: TextStyle(color: AppTheme.accent(context))),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                if ((_dashboardData?["pending_reports_list"] as List?)?.isEmpty ?? true) ...[
+                if (pendingQueue.isEmpty) ...[
                   GlassCard(
                     borderRadius: 20,
                     child: Center(
@@ -244,10 +259,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     ),
                   ),
                 ] else ...[
-                  ...((_dashboardData?["pending_reports_list"] as List? ?? []).map((r) => _PendingReportCard(
+                  ...pendingQueue.map((r) => _ReportRowCard(
                         report: r,
                         onReview: () => Navigator.pushNamed(context, '/doctor-review', arguments: r['report_id']).then((_) => _loadData()),
-                      ))),
+                      )),
                 ],
               ],
             ],
@@ -317,56 +332,23 @@ class _OverviewMetricCard extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.label, required this.icon, required this.color, required this.onTap});
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      borderRadius: 18,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: AppTheme.textPrimary(context),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PendingReportCard extends StatelessWidget {
-  const _PendingReportCard({required this.report, required this.onReview});
+class _ReportRowCard extends StatelessWidget {
+  const _ReportRowCard({
+    required this.report,
+    required this.onReview,
+    this.isHighRisk = false,
+  });
 
   final Map<String, dynamic> report;
   final VoidCallback onReview;
+  final bool isHighRisk;
 
   @override
   Widget build(BuildContext context) {
     final plaque = report['plaque_percent'] ?? 0;
+    final patientName = report['patient_name'] ?? 'Patient #${report["user_id"]}';
+    final timestamp = (report['timestamp'] ?? '').toString();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: GlassCard(
@@ -380,7 +362,9 @@ class _PendingReportCard extends StatelessWidget {
                 height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: plaque >= 50 ? Colors.redAccent.withValues(alpha: 0.2) : AppTheme.accent(context).withValues(alpha: 0.2),
+                  color: (plaque >= 50 || isHighRisk)
+                      ? Colors.redAccent.withValues(alpha: 0.2)
+                      : AppTheme.accent(context).withValues(alpha: 0.2),
                 ),
                 child: Center(
                   child: Text(
@@ -399,7 +383,7 @@ class _PendingReportCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Dental Report #${report["report_id"]}',
+                      patientName,
                       style: TextStyle(
                         color: AppTheme.textPrimary(context),
                         fontWeight: FontWeight.bold,
@@ -408,7 +392,7 @@ class _PendingReportCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Patient User #${report["user_id"]} • Status: ${report["review_status"]}',
+                      'Scan #${report["report_id"]} • Status: ${report["review_status"]} • Uploaded: $timestamp',
                       style: TextStyle(
                         color: AppTheme.textSecondary(context),
                         fontSize: 12,
