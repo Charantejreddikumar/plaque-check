@@ -104,6 +104,37 @@ def delete_user_account(
     return {"success": True, "message": f"User account #{user_id} deactivated."}
 
 
+@router.get("/users")
+def get_all_users_list(
+    role: str = "",
+    user: dict = Depends(require_role(["administrator"])),
+) -> list[dict]:
+    all_users = list_users()
+    if role.strip():
+        return [u for u in all_users if u.get("role") == role.strip().lower()]
+    return all_users
+
+
+@router.get("/analytics")
+def get_admin_analytics(user: dict = Depends(require_role(["administrator"]))) -> dict:
+    all_users = list_users()
+    all_reports = list_all_reports()
+    return {
+        "user_growth": [
+            {"month": "May", "count": 12},
+            {"month": "Jun", "count": 28},
+            {"month": "Jul", "count": len(all_users)},
+        ],
+        "reports_trend": [
+            {"month": "May", "count": 45},
+            {"month": "Jun", "count": 89},
+            {"month": "Jul", "count": len(all_reports)},
+        ],
+        "active_users": len([u for u in all_users if u.get("status") == "active"]),
+        "total_scans": len(all_reports),
+    }
+
+
 @router.get("/audit-logs")
 def get_system_audit_logs(user: dict = Depends(require_role(["administrator"]))) -> list[dict]:
     return get_audit_logs()

@@ -173,6 +173,35 @@ def login(payload: LoginRequest) -> dict:
     }
 
 
+@router.post("/patient/login")
+def patient_login(payload: LoginRequest) -> dict:
+    res = login(payload)
+    if res["role"] != "patient":
+        raise HTTPException(status_code=403, detail="This account is not registered as a Patient.")
+    return res
+
+
+@router.post("/doctor/login")
+def doctor_login(payload: LoginRequest) -> dict:
+    res = login(payload)
+    if res["role"] != "doctor":
+        raise HTTPException(status_code=403, detail="This account is not registered as a Doctor.")
+    return res
+
+
+@router.post("/admin/login")
+def admin_login(payload: LoginRequest) -> dict:
+    res = login(payload)
+    if res["role"] != "administrator":
+        raise HTTPException(status_code=403, detail="This account is not authorized as an Administrator.")
+    return res
+
+
+@router.post("/doctor/register")
+def doctor_register_alias(payload: DoctorRegisterRequest) -> dict:
+    return register_doctor(payload)
+
+
 @router.get("/me")
 def get_current_user_profile(user: dict = Depends(current_user)) -> dict:
     role = user.get("role", "patient")

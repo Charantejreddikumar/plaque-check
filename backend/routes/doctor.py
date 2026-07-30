@@ -82,6 +82,11 @@ def get_pending_reviews(user: dict = Depends(require_role(["doctor", "administra
     return list_pending_reports()
 
 
+@router.get("/reports")
+def get_all_doctor_reports(user: dict = Depends(require_role(["doctor", "administrator"]))) -> list[dict]:
+    return list_all_reports()
+
+
 @router.get("/reports/{report_id}")
 def get_report_details(
     report_id: int,

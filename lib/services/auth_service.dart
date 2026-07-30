@@ -57,8 +57,9 @@ class AuthService {
   Future<SessionUser> login({
     required String email,
     required String password,
+    String endpoint = '/login',
   }) async {
-    final url = Uri.parse('$_baseUrl/login');
+    final url = Uri.parse('$_baseUrl$endpoint');
     final payload = {'email': email.trim().toLowerCase(), 'password': password};
     final redactedPayload = {...payload, 'password': '<redacted>'};
 
@@ -87,6 +88,18 @@ class AuthService {
     }
 
     return SessionUser.fromLoginJson(body);
+  }
+
+  Future<SessionUser> patientLogin({required String email, required String password}) async {
+    return login(email: email, password: password, endpoint: '/patient/login');
+  }
+
+  Future<SessionUser> doctorLogin({required String email, required String password}) async {
+    return login(email: email, password: password, endpoint: '/doctor/login');
+  }
+
+  Future<SessionUser> adminLogin({required String email, required String password}) async {
+    return login(email: email, password: password, endpoint: '/admin/login');
   }
 
   Map<String, dynamic> _decodeBody(String source, {required String context}) {

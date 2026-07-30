@@ -45,10 +45,15 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
       final user = await SessionManager.currentUser();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
-        user == null ? '/login' : '/dashboard',
-      );
+      if (user == null) {
+        Navigator.pushReplacementNamed(context, '/role-selection');
+      } else if (user.role == 'doctor') {
+        Navigator.pushReplacementNamed(context, '/doctor-dashboard');
+      } else if (user.role == 'administrator') {
+        Navigator.pushReplacementNamed(context, '/admin-dashboard');
+      } else {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      }
     });
   }
 

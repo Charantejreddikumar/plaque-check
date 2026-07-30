@@ -23,6 +23,6 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
-    expect(find.text('👤 Patient Sign In'), findsOneWidget);
+    expect(find.text('Select Your Portal Role'), findsOneWidget);
   });
 }

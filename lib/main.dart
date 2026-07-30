@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 
 import 'screens/admin_dashboard_screen.dart';
+import 'screens/admin_login_screen.dart';
 import 'screens/analysis_screen.dart';
 import 'screens/comparison_screen.dart';
 import 'screens/crop_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/developer_settings_screen.dart';
 import 'screens/doctor_dashboard_screen.dart';
+import 'screens/doctor_login_screen.dart';
 import 'screens/doctor_register_screen.dart';
 import 'screens/doctor_review_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/history_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/patient_login_screen.dart';
 import 'screens/preview_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/result_screen.dart';
+import 'screens/role_selection_screen.dart';
 import 'screens/scan_instruction_screen.dart';
 import 'screens/scan_reminders_screen.dart';
 import 'screens/scan_screen.dart';
@@ -55,7 +58,11 @@ class PlaqueCheckApp extends StatelessWidget {
           initialRoute: '/splash',
           routes: {
             '/splash': (_) => const SplashScreen(),
-            '/login': (_) => const LoginScreen(),
+            '/role-selection': (_) => const RoleSelectionScreen(),
+            '/login': (_) => const PatientLoginScreen(),
+            '/patient-login': (_) => const PatientLoginScreen(),
+            '/doctor-login': (_) => const DoctorLoginScreen(),
+            '/admin-login': (_) => const AdminLoginScreen(),
             '/register': (_) => const RegisterScreen(),
             '/register-doctor': (_) => const DoctorRegisterScreen(),
             '/forgot-password': (_) => const ForgotPasswordScreen(),
@@ -82,7 +89,7 @@ class PlaqueCheckApp extends StatelessWidget {
           onGenerateRoute: (settings) {
             return PageRouteBuilder<void>(
               settings: settings,
-              pageBuilder: (_, _, _) => const DashboardScreen(),
+              pageBuilder: (_, _, _) => const RoleSelectionScreen(),
               transitionsBuilder: (_, animation, _, child) {
                 return FadeTransition(opacity: animation, child: child);
               },
