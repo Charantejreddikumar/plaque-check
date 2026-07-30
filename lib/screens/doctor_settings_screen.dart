@@ -20,152 +20,195 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
   Widget build(BuildContext context) {
     final themeController = ThemeProviderScope.of(context);
 
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: AppTheme.pageDecoration(context),
-        child: SafeArea(
-          child: Row(
-            children: [
-              const DoctorSideNav(currentRoute: '/doctor-settings'),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'PlaqueCheck Clinical Settings',
-                        style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Manage theme preferences, patient review notifications, and clinical security.',
-                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                      ),
-                      const SizedBox(height: 24),
+    return DoctorNavScaffold(
+      currentRoute: '/doctor-settings',
+      title: 'Doctor Settings',
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'PlaqueCheck Clinical Settings',
+              style: TextStyle(
+                color: AppTheme.textPrimary(context),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Manage theme preferences, patient review notifications, and clinical security controls.',
+              style: TextStyle(
+                color: AppTheme.textSecondary(context),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 24),
 
-                      // Shared Theme Switcher Card (System, Light, Dark)
-                      GlassCard(
-                        borderRadius: 22,
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.palette_outlined, color: Color(0xFF0EA5E9), size: 22),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Appearance & Theme Settings',
-                                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Select your preferred visual mode for PlaqueCheck Clinical Workspace',
-                                style: TextStyle(color: Colors.white60, fontSize: 12),
-                              ),
-                              const SizedBox(height: 16),
-                              AnimatedBuilder(
-                                animation: themeController,
-                                builder: (ctx, _) {
-                                  return Row(
-                                    children: [
-                                      _ThemeOptionChip(
-                                        label: 'System Theme',
-                                        icon: Icons.brightness_auto,
-                                        isSelected: themeController.themeMode == ThemeMode.system,
-                                        onTap: () => themeController.setThemeMode(ThemeMode.system),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      _ThemeOptionChip(
-                                        label: 'Light Mode',
-                                        icon: Icons.light_mode_outlined,
-                                        isSelected: themeController.themeMode == ThemeMode.light,
-                                        onTap: () => themeController.setThemeMode(ThemeMode.light),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      _ThemeOptionChip(
-                                        label: 'Dark Mode',
-                                        icon: Icons.dark_mode_outlined,
-                                        isSelected: themeController.themeMode == ThemeMode.dark,
-                                        onTap: () => themeController.setThemeMode(ThemeMode.dark),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ],
+            // Shared Theme Switcher Card (System, Light, Dark)
+            GlassCard(
+              borderRadius: 22,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.palette_outlined, color: AppTheme.accent(context), size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Appearance & Theme Settings',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Select your preferred visual mode for PlaqueCheck Workspace',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary(context),
+                        fontSize: 12,
                       ),
-                      const SizedBox(height: 20),
-
-                      // Notification Settings Card
-                      GlassCard(
-                        borderRadius: 22,
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.notifications_active_outlined, color: Color(0xFF0EA5E9), size: 22),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Clinical Review Notifications',
-                                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              SwitchListTile(
-                                title: const Text('New Scan Upload Alerts', style: TextStyle(color: Colors.white, fontSize: 14)),
-                                subtitle: const Text('Receive instant notifications when a patient uploads a 3-image dental scan', style: TextStyle(color: Colors.white60, fontSize: 12)),
-                                value: _emailAlerts,
-                                activeColor: const Color(0xFF0EA5E9),
-                                onChanged: (val) => setState(() => _emailAlerts = val),
-                              ),
-                              const Divider(color: Colors.white12),
-                              SwitchListTile(
-                                title: const Text('Urgent High-Risk Plaque Alerts (≥50%)', style: TextStyle(color: Colors.white, fontSize: 14)),
-                                subtitle: const Text('Push emergency notifications for severe plaque cases', style: TextStyle(color: Colors.white60, fontSize: 12)),
-                                value: _urgentHighRiskAlerts,
-                                activeColor: const Color(0xFF0EA5E9),
-                                onChanged: (val) => setState(() => _urgentHighRiskAlerts = val),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Security & Password Reset Tile
-                      GlassCard(
-                        borderRadius: 22,
-                        child: ListTile(
-                          leading: const Icon(Icons.security_outlined, color: Color(0xFF0EA5E9)),
-                          title: const Text('Security & Password Management', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                          subtitle: const Text('Reset doctor credentials or review active sessions', style: TextStyle(color: Colors.white60, fontSize: 12)),
-                          trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white70),
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Password reset link sent to your registered clinical email.')),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+                    AnimatedBuilder(
+                      animation: themeController,
+                      builder: (ctx, _) {
+                        return Row(
+                          children: [
+                            _ThemeOptionChip(
+                              label: 'System Theme',
+                              icon: Icons.brightness_auto,
+                              isSelected: themeController.themeMode == ThemeMode.system,
+                              onTap: () => themeController.setThemeMode(ThemeMode.system),
+                            ),
+                            const SizedBox(width: 10),
+                            _ThemeOptionChip(
+                              label: 'Light Mode',
+                              icon: Icons.light_mode_outlined,
+                              isSelected: themeController.themeMode == ThemeMode.light,
+                              onTap: () => themeController.setThemeMode(ThemeMode.light),
+                            ),
+                            const SizedBox(width: 10),
+                            _ThemeOptionChip(
+                              label: 'Dark Mode',
+                              icon: Icons.dark_mode_outlined,
+                              isSelected: themeController.themeMode == ThemeMode.dark,
+                              onTap: () => themeController.setThemeMode(ThemeMode.dark),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+
+            // Notification Settings Card
+            GlassCard(
+              borderRadius: 22,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.notifications_active_outlined, color: AppTheme.accent(context), size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Clinical Review Notifications',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: Text(
+                        'New Scan Upload Alerts',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary(context),
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Receive instant notifications when a patient uploads a 3-image dental scan',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                      value: _emailAlerts,
+                      activeColor: AppTheme.accent(context),
+                      onChanged: (val) => setState(() => _emailAlerts = val),
+                    ),
+                    Divider(color: AppTheme.glassBorder(context)),
+                    SwitchListTile(
+                      title: Text(
+                        'Urgent High-Risk Plaque Alerts (≥50%)',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary(context),
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Push emergency notifications for severe plaque cases',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                      value: _urgentHighRiskAlerts,
+                      activeColor: AppTheme.accent(context),
+                      onChanged: (val) => setState(() => _urgentHighRiskAlerts = val),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Security & Password Reset Tile
+            GlassCard(
+              borderRadius: 22,
+              child: ListTile(
+                leading: Icon(Icons.security_outlined, color: AppTheme.accent(context)),
+                title: Text(
+                  'Security & Password Management',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary(context),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  'Reset doctor credentials or review active sessions',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary(context),
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary(context)),
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Password reset link sent to your registered clinical email.')),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -195,21 +238,21 @@ class _ThemeOptionChip extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0EA5E9).withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.08),
+            color: isSelected ? AppTheme.accent(context).withValues(alpha: 0.18) : AppTheme.secondarySurface(context),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? const Color(0xFF0EA5E9) : Colors.white.withValues(alpha: 0.15),
+              color: isSelected ? AppTheme.accent(context) : AppTheme.glassBorder(context),
               width: isSelected ? 1.8 : 1.0,
             ),
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? const Color(0xFF0EA5E9) : Colors.white70, size: 20),
+              Icon(icon, color: isSelected ? AppTheme.accent(context) : AppTheme.textSecondary(context), size: 20),
               const SizedBox(height: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white70,
+                  color: isSelected ? AppTheme.textPrimary(context) : AppTheme.textSecondary(context),
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),

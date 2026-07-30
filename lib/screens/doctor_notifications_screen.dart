@@ -35,66 +35,86 @@ class _DoctorNotificationsScreenState extends State<DoctorNotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: AppTheme.pageDecoration(context),
-        child: SafeArea(
-          child: Row(
-            children: [
-              const DoctorSideNav(currentRoute: '/doctor-notifications'),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Clinical Notifications & Alerts', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: const Color(0xFF0EA5E9).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
-                            child: Text('${_notifications.length} New Alerts', style: const TextStyle(color: Color(0xFF0EA5E9), fontWeight: FontWeight.bold, fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _notifications.length,
-                          itemBuilder: (ctx, i) {
-                            final notif = _notifications[i];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: GlassCard(
-                                borderRadius: 18,
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: notif['type'] == 'alert' ? Colors.redAccent.withValues(alpha: 0.2) : const Color(0xFF0EA5E9).withValues(alpha: 0.2),
-                                    child: Icon(
-                                      notif['type'] == 'alert' ? Icons.warning_amber_rounded : Icons.notifications_active_rounded,
-                                      color: notif['type'] == 'alert' ? Colors.redAccent : const Color(0xFF0EA5E9),
-                                      size: 20,
-                                    ),
-                                  ),
-                                  title: Text(notif['title']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                                  subtitle: Text('${notif["message"]} • ${notif["time"]}', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+    return DoctorNavScaffold(
+      currentRoute: '/doctor-notifications',
+      title: 'Clinical Notifications',
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Clinical Notifications & Alerts',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary(context),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accent(context).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_notifications.length} New Alerts',
+                    style: TextStyle(
+                      color: AppTheme.accent(context),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            Expanded(
+              child: ListView.builder(
+                itemCount: _notifications.length,
+                itemBuilder: (ctx, i) {
+                  final notif = _notifications[i];
+                  final isAlert = notif['type'] == 'alert';
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: GlassCard(
+                      borderRadius: 18,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: isAlert ? Colors.redAccent.withValues(alpha: 0.2) : AppTheme.accent(context).withValues(alpha: 0.2),
+                          child: Icon(
+                            isAlert ? Icons.warning_amber_rounded : Icons.notifications_active_rounded,
+                            color: isAlert ? Colors.redAccent : AppTheme.accent(context),
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          notif['title']!,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${notif["message"]} • ${notif["time"]}',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary(context),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -49,181 +49,207 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     final dateStr = '${_monthName(now.month)} ${now.day}, ${now.year}';
     final timeStr = '${now.hour.toString().padLeft(2, "0")}:${now.minute.toString().padLeft(2, "0")}';
 
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: AppTheme.pageDecoration(context),
-        child: SafeArea(
-          child: Row(
+    return DoctorNavScaffold(
+      currentRoute: '/doctor-dashboard',
+      title: 'PlaqueCheck Clinical Dashboard',
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Collapsible Sidebar Navigation
-              const DoctorSideNav(currentRoute: '/doctor-dashboard'),
-
-              // Main Dashboard Area
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Welcome Banner Header
-                        GlassCard(
-                          borderRadius: 24,
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 28,
-                                  backgroundColor: const Color(0xFF0EA5E9).withValues(alpha: 0.25),
-                                  child: const Icon(Icons.person_rounded, color: Color(0xFF0EA5E9), size: 30),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Welcome back, Dr. ${_user?.fullName ?? "Dentist"} 👋',
-                                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'Specialty: Periodontics & Oral Surgery • SmileCare Dental Hospital',
-                                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(dateStr, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 2),
-                                    Text(timeStr, style: const TextStyle(color: Color(0xFF0EA5E9), fontSize: 18, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        if (_isLoading) ...[
-                          const Center(child: CircularProgressIndicator(color: Color(0xFF0EA5E9))),
-                        ] else ...[
-                          // Quick Overview Metrics Grid
-                          GridView.count(
-                            crossAxisCount: MediaQuery.of(context).size.width > 1200 ? 4 : 2,
-                            shrinkWrap: true,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                            childAspectRatio: 1.6,
-                            physics: const NeverScrollableScrollPhysics(),
-                            children: [
-                              _OverviewMetricCard(
-                                title: "Today's Patients",
-                                value: '${_dashboardData?["total_patients"] ?? 0}',
-                                icon: Icons.people_alt_rounded,
-                                color: const Color(0xFF0EA5E9),
-                              ),
-                              _OverviewMetricCard(
-                                title: 'Pending Reviews',
-                                value: '${_dashboardData?["pending_reviews"] ?? 0}',
-                                icon: Icons.pending_actions_rounded,
-                                color: const Color(0xFFEF4444),
-                              ),
-                              _OverviewMetricCard(
-                                title: 'High Risk Cases',
-                                value: '${_dashboardData?["high_risk_patients"] ?? 0}',
-                                icon: Icons.warning_amber_rounded,
-                                color: const Color(0xFFF59E0B),
-                              ),
-                              _OverviewMetricCard(
-                                title: 'Avg Plaque Score',
-                                value: '${_dashboardData?["average_plaque_score"] ?? 0}%',
-                                icon: Icons.analytics_rounded,
-                                color: const Color(0xFF10B981),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Quick Action Buttons Row
-                          const Text('Quick Clinical Actions', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _ActionButton(
-                                  label: 'Review Queue',
-                                  icon: Icons.rate_review_rounded,
-                                  color: const Color(0xFF0EA5E9),
-                                  onTap: () {},
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _ActionButton(
-                                  label: 'Search Patients',
-                                  icon: Icons.person_search_rounded,
-                                  color: const Color(0xFF10B981),
-                                  onTap: () => Navigator.pushNamed(context, '/doctor-patients'),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _ActionButton(
-                                  label: 'View Analytics',
-                                  icon: Icons.insights_rounded,
-                                  color: const Color(0xFF805AD5),
-                                  onTap: () => Navigator.pushNamed(context, '/doctor-analytics'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 28),
-
-                          // Pending Reviews Queue Section
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Pending Dental Scans Waiting for Doctor Sign-Off', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                              TextButton.icon(
-                                onPressed: () => Navigator.pushNamed(context, '/doctor-patients'),
-                                icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: Color(0xFF0EA5E9)),
-                                label: const Text('View All Patients', style: TextStyle(color: Color(0xFF0EA5E9))),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          if ((_dashboardData?["pending_reports_list"] as List?)?.isEmpty ?? true) ...[
-                            GlassCard(
-                              borderRadius: 20,
-                              child: const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(24),
-                                  child: Text('No patient reports available.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                ),
+              // Welcome Banner Header
+              GlassCard(
+                borderRadius: 24,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: AppTheme.accent(context).withValues(alpha: 0.2),
+                        child: Icon(Icons.person_rounded, color: AppTheme.accent(context), size: 30),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome back, Dr. ${_user?.fullName ?? "Dentist"} 👋',
+                              style: TextStyle(
+                                color: AppTheme.textPrimary(context),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ] else ...[
-                            ...((_dashboardData?["pending_reports_list"] as List? ?? []).map((r) => _PendingReportCard(
-                                  report: r,
-                                  onReview: () => Navigator.pushNamed(context, '/doctor-review', arguments: r['report_id']).then((_) => _loadData()),
-                                ))),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Specialty: Periodontics & Oral Surgery • PlaqueCheck Dental Suite',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary(context),
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            dateStr,
+                            style: TextStyle(
+                              color: AppTheme.textSecondary(context),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            timeStr,
+                            style: TextStyle(
+                              color: AppTheme.accent(context),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
+
+              if (_isLoading) ...[
+                Center(child: CircularProgressIndicator(color: AppTheme.accent(context))),
+              ] else ...[
+                // Quick Overview Metrics Grid
+                GridView.count(
+                  crossAxisCount: MediaQuery.of(context).size.width > 1200 ? 4 : 2,
+                  shrinkWrap: true,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  childAspectRatio: 1.6,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _OverviewMetricCard(
+                      title: "Today's Patients",
+                      value: '${_dashboardData?["total_patients"] ?? 0}',
+                      icon: Icons.people_alt_rounded,
+                      color: AppTheme.accent(context),
+                    ),
+                    _OverviewMetricCard(
+                      title: 'Pending Reviews',
+                      value: '${_dashboardData?["pending_reviews"] ?? 0}',
+                      icon: Icons.pending_actions_rounded,
+                      color: const Color(0xFFEF4444),
+                    ),
+                    _OverviewMetricCard(
+                      title: 'High Risk Cases',
+                      value: '${_dashboardData?["high_risk_patients"] ?? 0}',
+                      icon: Icons.warning_amber_rounded,
+                      color: const Color(0xFFF59E0B),
+                    ),
+                    _OverviewMetricCard(
+                      title: 'Avg Plaque Score',
+                      value: '${_dashboardData?["average_plaque_score"] ?? 0}%',
+                      icon: Icons.analytics_rounded,
+                      color: const Color(0xFF10B981),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Quick Action Buttons Row
+                Text(
+                  'Quick Clinical Actions',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary(context),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionButton(
+                        label: 'Review Queue',
+                        icon: Icons.rate_review_rounded,
+                        color: AppTheme.accent(context),
+                        onTap: () {},
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _ActionButton(
+                        label: 'Search Patients',
+                        icon: Icons.person_search_rounded,
+                        color: const Color(0xFF10B981),
+                        onTap: () => Navigator.pushNamed(context, '/doctor-patients'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _ActionButton(
+                        label: 'View Analytics',
+                        icon: Icons.insights_rounded,
+                        color: const Color(0xFF805AD5),
+                        onTap: () => Navigator.pushNamed(context, '/doctor-analytics'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+
+                // Pending Reviews Queue Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Pending Dental Scans Waiting for Doctor Sign-Off',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary(context),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/doctor-patients'),
+                      icon: Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.accent(context)),
+                      label: Text('View All Patients', style: TextStyle(color: AppTheme.accent(context))),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                if ((_dashboardData?["pending_reports_list"] as List?)?.isEmpty ?? true) ...[
+                  GlassCard(
+                    borderRadius: 20,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No patient reports available.',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  ...((_dashboardData?["pending_reports_list"] as List? ?? []).map((r) => _PendingReportCard(
+                        report: r,
+                        onReview: () => Navigator.pushNamed(context, '/doctor-review', arguments: r['report_id']).then((_) => _loadData()),
+                      ))),
+                ],
+              ],
             ],
           ),
         ),
@@ -254,7 +280,6 @@ class _OverviewMetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassCard(
       borderRadius: 20,
-      opacity: 0.16,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -266,7 +291,11 @@ class _OverviewMetricCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: AppTheme.textSecondary(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -274,7 +303,14 @@ class _OverviewMetricCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppTheme.textPrimary(context),
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );
@@ -293,7 +329,6 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassCard(
       borderRadius: 18,
-      opacity: 0.14,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
@@ -305,7 +340,15 @@ class _ActionButton extends StatelessWidget {
               Icon(icon, color: color, size: 20),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: AppTheme.textPrimary(context),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                ),
               ),
             ],
           ),
@@ -337,10 +380,17 @@ class _PendingReportCard extends StatelessWidget {
                 height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: plaque >= 50 ? Colors.redAccent.withValues(alpha: 0.25) : const Color(0xFF0EA5E9).withValues(alpha: 0.25),
+                  color: plaque >= 50 ? Colors.redAccent.withValues(alpha: 0.2) : AppTheme.accent(context).withValues(alpha: 0.2),
                 ),
                 child: Center(
-                  child: Text('$plaque%', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  child: Text(
+                    '$plaque%',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary(context),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -348,17 +398,29 @@ class _PendingReportCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Dental Report #${report["report_id"]}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(
+                      'Dental Report #${report["report_id"]}',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary(context),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('Patient User #${report["user_id"]} • Status: ${report["review_status"]}', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+                    Text(
+                      'Patient User #${report["user_id"]} • Status: ${report["review_status"]}',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary(context),
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
               ElevatedButton.icon(
                 onPressed: onReview,
-                icon: const Icon(Icons.rate_review_rounded, size: 16, color: Colors.white),
-                label: const Text('Review', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0EA5E9), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                icon: const Icon(Icons.rate_review_rounded, size: 16),
+                label: const Text('Review', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),

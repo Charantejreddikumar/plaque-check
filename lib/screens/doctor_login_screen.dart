@@ -65,23 +65,32 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0F172A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        backgroundColor: AppTheme.cardColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppTheme.glassBorder(context)),
+        ),
+        title: Row(
           children: [
-            Icon(Icons.lock_reset_rounded, color: Color(0xFF0EA5E9)),
-            SizedBox(width: 10),
-            Text('Doctor Password Reset', style: TextStyle(color: Colors.white, fontSize: 18)),
+            Icon(Icons.lock_reset_rounded, color: AppTheme.accent(context)),
+            const SizedBox(width: 10),
+            Text(
+              'Doctor Password Reset',
+              style: TextStyle(color: AppTheme.textPrimary(context), fontSize: 18),
+            ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Please contact your Hospital / Clinic Administrator or submit a request to support@plaquecheck.com to reset your clinical account credentials.',
-          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF0EA5E9), fontWeight: FontWeight.bold)),
+            child: Text(
+              'Close',
+              style: TextStyle(color: AppTheme.accent(context), fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -106,9 +115,9 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0EA5E9)),
+                      icon: Icon(Icons.arrow_back_rounded, color: AppTheme.accent(context)),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withValues(alpha: 0.12),
+                        backgroundColor: AppTheme.secondarySurface(context),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -119,23 +128,30 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0EA5E9).withValues(alpha: 0.2),
+                            color: AppTheme.accent(context).withValues(alpha: 0.16),
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0xFF0EA5E9).withValues(alpha: 0.4)),
+                            border: Border.all(color: AppTheme.accent(context).withValues(alpha: 0.3)),
                           ),
-                          child: const Icon(Icons.medical_services_rounded, color: Color(0xFF0EA5E9), size: 32),
+                          child: Icon(Icons.medical_services_rounded, color: AppTheme.accent(context), size: 32),
                         ),
                         const SizedBox(width: 14),
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'PlaqueCheck Clinical',
-                              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                              'PlaqueCheck',
+                              style: TextStyle(
+                                color: AppTheme.textPrimary(context),
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                             Text(
-                              'PlaqueCheck AI Dental Platform',
-                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                              'Clinical Doctor Workspace',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary(context),
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -162,12 +178,9 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Glassmorphism Login Form Card
+                    // Login Form Card
                     GlassCard(
                       borderRadius: 28,
-                      opacity: 0.16,
-                      borderOpacity: 0.24,
-                      glowColor: const Color(0xFF0EA5E9),
                       child: Form(
                         key: _formKey,
                         child: Column(
@@ -176,7 +189,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
                               validator: _validateEmail,
-                              style: const TextStyle(color: Colors.white),
+                              style: TextStyle(color: AppTheme.textPrimary(context)),
                               decoration: _inputDecoration('Doctor Email Address', Icons.email_outlined),
                             ),
                             const SizedBox(height: 16),
@@ -184,7 +197,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                               controller: _passwordController,
                               obscureText: _obscurePassword,
                               validator: _validateRequiredPassword,
-                              style: const TextStyle(color: Colors.white),
+                              style: TextStyle(color: AppTheme.textPrimary(context)),
                               decoration: _inputDecoration(
                                 'Password',
                                 Icons.lock_outline,
@@ -198,7 +211,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                                     _obscurePassword
                                         ? Icons.visibility_outlined
                                         : Icons.visibility_off_outlined,
-                                    color: const Color(0xFF0EA5E9),
+                                    color: AppTheme.accent(context),
                                   ),
                                 ),
                               ),
@@ -213,17 +226,24 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                                   children: [
                                     Checkbox(
                                       value: _rememberMe,
-                                      activeColor: const Color(0xFF0EA5E9),
+                                      activeColor: AppTheme.accent(context),
                                       onChanged: (val) => setState(() => _rememberMe = val ?? true),
                                     ),
-                                    const Text('Remember Me', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                    Text(
+                                      'Remember Me',
+                                      style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 12),
+                                    ),
                                   ],
                                 ),
                                 TextButton(
                                   onPressed: _showForgotPasswordDialog,
-                                  child: const Text(
+                                  child: Text(
                                     'Forgot Password?',
-                                    style: TextStyle(color: Color(0xFF0EA5E9), fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: AppTheme.accent(context),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -248,20 +268,20 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                         children: [
                           OutlinedButton.icon(
                             onPressed: () => Navigator.pushNamed(context, '/register-doctor'),
-                            icon: const Icon(Icons.medical_information_outlined, color: Color(0xFF0EA5E9)),
-                            label: const Text(
+                            icon: Icon(Icons.medical_information_outlined, color: AppTheme.accent(context)),
+                            label: Text(
                               'Apply for Doctor Registration',
-                              style: TextStyle(color: Color(0xFF0EA5E9), fontWeight: FontWeight.bold),
+                              style: TextStyle(color: AppTheme.accent(context), fontWeight: FontWeight.bold),
                             ),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF0EA5E9)),
+                              side: BorderSide(color: AppTheme.accent(context)),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'Requires Administrator verification after submission',
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                            style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 11),
                           ),
                         ],
                       ),
@@ -279,23 +299,8 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
   InputDecoration _inputDecoration(String hint, IconData icon, {Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-      prefixIcon: Icon(icon, color: const Color(0xFF0EA5E9)),
+      prefixIcon: Icon(icon, color: AppTheme.accent(context)),
       suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.08),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.8),
-      ),
     );
   }
 
@@ -312,8 +317,8 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
 
   SnackBar _authSnackBar(String message) {
     return SnackBar(
-      backgroundColor: const Color(0xFF1E293B),
-      content: Text(message, style: const TextStyle(color: Colors.white)),
+      backgroundColor: AppTheme.cardColor(context),
+      content: Text(message, style: TextStyle(color: AppTheme.textPrimary(context))),
     );
   }
 }

@@ -3,13 +3,83 @@ import 'package:flutter/material.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 
+class DoctorNavScaffold extends StatelessWidget {
+  const DoctorNavScaffold({
+    super.key,
+    required this.currentRoute,
+    required this.title,
+    required this.body,
+    this.floatingActionButton,
+  });
+
+  final String currentRoute;
+  final String title;
+  final Widget body;
+  final Widget? floatingActionButton;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+
+    if (isDesktop) {
+      return Scaffold(
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: AppTheme.pageDecoration(context),
+          child: SafeArea(
+            child: Row(
+              children: [
+                DoctorSideNav(currentRoute: currentRoute),
+                Expanded(child: body),
+              ],
+            ),
+          ),
+        ),
+        floatingActionButton: floatingActionButton,
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          title,
+          style: TextStyle(
+            color: AppTheme.textPrimary(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: AppTheme.textPrimary(context)),
+      ),
+      drawer: Drawer(
+        backgroundColor: AppTheme.cardColor(context),
+        child: SafeArea(
+          child: DoctorSideNav(currentRoute: currentRoute, isDrawerMode: true),
+        ),
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: AppTheme.pageDecoration(context),
+        child: SafeArea(child: body),
+      ),
+      floatingActionButton: floatingActionButton,
+    );
+  }
+}
+
 class DoctorSideNav extends StatefulWidget {
   const DoctorSideNav({
     super.key,
     required this.currentRoute,
+    this.isDrawerMode = false,
   });
 
   final String currentRoute;
+  final bool isDrawerMode;
 
   @override
   State<DoctorSideNav> createState() => _DoctorSideNavState();
@@ -26,25 +96,27 @@ class _DoctorSideNavState extends State<DoctorSideNav> {
 
   @override
   Widget build(BuildContext context) {
-    final double width = _isCollapsed ? 76.0 : 250.0;
+    final double width = (widget.isDrawerMode || !_isCollapsed) ? 260.0 : 76.0;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeInOut,
       width: width,
       height: double.infinity,
-      margin: const EdgeInsets.all(12),
+      margin: widget.isDrawerMode ? EdgeInsets.zero : const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: AppTheme.cardColor(context),
+        borderRadius: widget.isDrawerMode ? BorderRadius.zero : BorderRadius.circular(24),
+        border: widget.isDrawerMode ? null : Border.all(color: AppTheme.glassBorder(context)),
+        boxShadow: AppTheme.isDark(context)
+            ? const []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
       ),
       child: Column(
         children: [
@@ -56,38 +128,50 @@ class _DoctorSideNavState extends State<DoctorSideNav> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0EA5E9).withValues(alpha: 0.2),
+                    color: AppTheme.accent(context).withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.medical_services_rounded, color: Color(0xFF0EA5E9), size: 24),
+                  child: Icon(Icons.medical_services_rounded, color: AppTheme.accent(context), size: 24),
                 ),
-                if (!_isCollapsed) ...[
+                if (widget.isDrawerMode || !_isCollapsed) ...[
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'PlaqueCheck',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
                         ),
                         Text(
-                          'Clinical Dental Suite',
-                          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                          'Clinical Workspace',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary(context),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ],
-                IconButton(
-                  onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
-                  icon: Icon(_isCollapsed ? Icons.chevron_right : Icons.chevron_left, color: Colors.white70),
-                  tooltip: _isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar',
-                ),
+                if (!widget.isDrawerMode)
+                  IconButton(
+                    onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
+                    icon: Icon(
+                      _isCollapsed ? Icons.chevron_right : Icons.chevron_left,
+                      color: AppTheme.textSecondary(context),
+                    ),
+                    tooltip: _isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar',
+                  ),
               ],
             ),
           ),
-          const Divider(color: Colors.white12, height: 1),
+          Divider(color: AppTheme.glassBorder(context), height: 1),
 
           // Navigation Links
           Expanded(
@@ -99,56 +183,49 @@ class _DoctorSideNavState extends State<DoctorSideNav> {
                   label: 'Dashboard',
                   route: '/doctor-dashboard',
                   currentRoute: widget.currentRoute,
-                  isCollapsed: _isCollapsed,
+                  isCollapsed: !widget.isDrawerMode && _isCollapsed,
                 ),
                 _NavItem(
                   icon: Icons.people_alt_rounded,
                   label: 'Patients',
                   route: '/doctor-patients',
                   currentRoute: widget.currentRoute,
-                  isCollapsed: _isCollapsed,
-                ),
-                _NavItem(
-                  icon: Icons.rate_review_rounded,
-                  label: 'Report Reviews',
-                  route: '/doctor-dashboard',
-                  currentRoute: widget.currentRoute,
-                  isCollapsed: _isCollapsed,
+                  isCollapsed: !widget.isDrawerMode && _isCollapsed,
                 ),
                 _NavItem(
                   icon: Icons.analytics_rounded,
                   label: 'Analytics',
                   route: '/doctor-analytics',
                   currentRoute: widget.currentRoute,
-                  isCollapsed: _isCollapsed,
+                  isCollapsed: !widget.isDrawerMode && _isCollapsed,
                 ),
                 _NavItem(
                   icon: Icons.notifications_rounded,
                   label: 'Notifications',
                   route: '/doctor-notifications',
                   currentRoute: widget.currentRoute,
-                  isCollapsed: _isCollapsed,
+                  isCollapsed: !widget.isDrawerMode && _isCollapsed,
                 ),
                 _NavItem(
                   icon: Icons.badge_rounded,
                   label: 'Doctor Profile',
                   route: '/doctor-profile',
                   currentRoute: widget.currentRoute,
-                  isCollapsed: _isCollapsed,
+                  isCollapsed: !widget.isDrawerMode && _isCollapsed,
                 ),
                 _NavItem(
                   icon: Icons.settings_rounded,
                   label: 'Settings',
                   route: '/doctor-settings',
                   currentRoute: widget.currentRoute,
-                  isCollapsed: _isCollapsed,
+                  isCollapsed: !widget.isDrawerMode && _isCollapsed,
                 ),
               ],
             ),
           ),
 
           // Footer Logout Button
-          const Divider(color: Colors.white12, height: 1),
+          Divider(color: AppTheme.glassBorder(context), height: 1),
           Padding(
             padding: const EdgeInsets.all(12),
             child: InkWell(
@@ -157,14 +234,14 @@ class _DoctorSideNavState extends State<DoctorSideNav> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(alpha: 0.15),
+                  color: Colors.redAccent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
-                  mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+                  mainAxisAlignment: (!widget.isDrawerMode && _isCollapsed) ? MainAxisAlignment.center : MainAxisAlignment.start,
                   children: [
                     const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
-                    if (!_isCollapsed) ...[
+                    if (widget.isDrawerMode || !_isCollapsed) ...[
                       const SizedBox(width: 12),
                       const Text(
                         'Sign Out',
@@ -205,6 +282,9 @@ class _NavItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       child: InkWell(
         onTap: () {
+          if (Scaffold.of(context).isDrawerOpen) {
+            Navigator.pop(context);
+          }
           if (!isSelected) {
             Navigator.pushReplacementNamed(context, route);
           }
@@ -213,10 +293,10 @@ class _NavItem extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0EA5E9).withValues(alpha: 0.22) : Colors.transparent,
+            color: isSelected ? AppTheme.accent(context).withValues(alpha: 0.18) : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? const Color(0xFF0EA5E9) : Colors.transparent,
+              color: isSelected ? AppTheme.accent(context) : Colors.transparent,
               width: 1.2,
             ),
           ),
@@ -226,14 +306,14 @@ class _NavItem extends StatelessWidget {
               Icon(
                 icon,
                 size: 20,
-                color: isSelected ? const Color(0xFF0EA5E9) : Colors.white60,
+                color: isSelected ? AppTheme.accent(context) : AppTheme.textSecondary(context),
               ),
               if (!isCollapsed) ...[
                 const SizedBox(width: 12),
                 Text(
                   label,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
+                    color: isSelected ? AppTheme.textPrimary(context) : AppTheme.textSecondary(context),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     fontSize: 13,
                   ),
