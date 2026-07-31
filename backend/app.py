@@ -122,7 +122,7 @@ app.include_router(notifications_router)
 @app.on_event("startup")
 def startup() -> None:
     init_database()
-    init_user_database()
+    init_user_database(force=True)
     logger.info("PlaqueCheck backend started.")
 
 

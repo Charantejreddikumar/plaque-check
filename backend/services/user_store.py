@@ -368,27 +368,34 @@ def _seed_default_admin_internal(cursor, db_type: str) -> None:
             try:
                 cursor.execute("SAVEPOINT seed_account_sp")
                 cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
-                row = cursor.fetchone()
-                if not row:
+                user_row = cursor.fetchone()
+                if not user_row:
                     cursor.execute(
                         "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
                         (name, email, default_pass, role, status, now_str),
                     )
                     uid = cursor.fetchone()[0]
+                else:
+                    uid = user_row["id"] if isinstance(user_row, dict) else user_row[0]
                     cursor.execute(
-                        f"INSERT INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO NOTHING",
-                        (uid, name, email, default_pass, status, now_str, now_str),
+                        "UPDATE users SET role = %s, status = %s WHERE id = %s",
+                        (role, status, uid),
                     )
-                    if role == "doctor":
-                        cursor.execute(
-                            "INSERT INTO doctors (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, approval_status, created_at) VALUES (%s, '555-0199', 'BDS, MDS', 'Periodontics', 'MC-998822', 'PlaqueCheck Dental', 'City Dental Hospital', 'approved', %s) ON CONFLICT (user_id) DO NOTHING",
-                            (uid, now_str),
-                        )
-                    elif role == "patient":
-                        cursor.execute(
-                            "INSERT INTO patients (user_id, age, gender, phone, medical_history, created_at) VALUES (%s, 30, 'Other', '555-0100', 'None', %s) ON CONFLICT (user_id) DO NOTHING",
-                            (uid, now_str),
-                        )
+
+                cursor.execute(
+                    f"INSERT INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = EXCLUDED.status",
+                    (uid, name, email, default_pass, status, now_str, now_str),
+                )
+                if role == "doctor":
+                    cursor.execute(
+                        "INSERT INTO doctors (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, approval_status, created_at) VALUES (%s, '555-0199', 'BDS, MDS', 'Periodontics', 'MC-998822', 'PlaqueCheck Dental', 'City Dental Hospital', 'approved', %s) ON CONFLICT (user_id) DO UPDATE SET approval_status = 'approved'",
+                        (uid, now_str),
+                    )
+                elif role == "patient":
+                    cursor.execute(
+                        "INSERT INTO patients (user_id, age, gender, phone, medical_history, created_at) VALUES (%s, 30, 'Other', '555-0100', 'None', %s) ON CONFLICT (user_id) DO NOTHING",
+                        (uid, now_str),
+                    )
                 cursor.execute("RELEASE SAVEPOINT seed_account_sp")
             except Exception:
                 try:
@@ -396,28 +403,43 @@ def _seed_default_admin_internal(cursor, db_type: str) -> None:
                 except Exception:
                     pass
         else:
-            cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (email,))
-            row = cursor.fetchone()
-            if not row:
+            try:
+                cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (email,))
+                user_row = cursor.fetchone()
+                if not user_row:
+                    cursor.execute(
+                        "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                        (name, email, default_pass, role, status, now_str),
+                    )
+                    uid = cursor.lastrowid
+                else:
+                    uid = user_row[0]
+                    cursor.execute(
+                        "UPDATE users SET role = ?, status = ? WHERE id = ?",
+                        (role, status, uid),
+                    )
+
                 cursor.execute(
-                    "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                    (name, email, default_pass, role, status, now_str),
-                )
-                uid = cursor.lastrowid
-                cursor.execute(
-                    f"INSERT OR IGNORE INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    f"INSERT OR REPLACE INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (uid, name, email, default_pass, status, now_str, now_str),
                 )
                 if role == "doctor":
                     cursor.execute(
-                        "INSERT OR IGNORE INTO doctors (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, approval_status, created_at) VALUES (?, '555-0199', 'BDS, MDS', 'Periodontics', 'MC-998822', 'PlaqueCheck Dental', 'City Dental Hospital', 'approved', ?)",
-                        (uid, now_str),
+                        "UPDATE doctors SET approval_status = 'approved' WHERE user_id = ?",
+                        (uid,),
                     )
+                    if cursor.rowcount == 0:
+                        cursor.execute(
+                            "INSERT OR IGNORE INTO doctors (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, approval_status, created_at) VALUES (?, '555-0199', 'BDS, MDS', 'Periodontics', 'MC-998822', 'PlaqueCheck Dental', 'City Dental Hospital', 'approved', ?)",
+                            (uid, now_str),
+                        )
                 elif role == "patient":
                     cursor.execute(
                         "INSERT OR IGNORE INTO patients (user_id, age, gender, phone, medical_history, created_at) VALUES (?, 30, 'Other', '555-0100', 'None', ?)",
                         (uid, now_str),
                     )
+            except Exception:
+                pass
 
 
 # Role-Isolated Lookup Functions
