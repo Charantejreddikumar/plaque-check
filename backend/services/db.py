@@ -23,6 +23,10 @@ LOCAL_DB_DIR = Path(__file__).resolve().parents[1] / "database"
 
 
 def _get_clean_database_url() -> str:
+    use_supabase = os.getenv("USE_SUPABASE", "false").lower() in ("true", "1")
+    if not use_supabase:
+        return ""
+
     url = (
         os.getenv("SUPABASE_DATABASE_URL")
         or os.getenv("SUPABASE_DB_URL")
