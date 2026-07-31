@@ -106,6 +106,7 @@ def init_user_database(force: bool = False) -> None:
                 CREATE TABLE IF NOT EXISTS sessions (
                     token_hash TEXT PRIMARY KEY,
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    role TEXT,
                     created_at TEXT NOT NULL
                 )
                 """
@@ -225,6 +226,7 @@ def init_user_database(force: bool = False) -> None:
                 CREATE TABLE IF NOT EXISTS sessions (
                     token_hash TEXT PRIMARY KEY,
                     user_id INTEGER NOT NULL,
+                    role TEXT,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
@@ -290,6 +292,23 @@ def init_user_database(force: bool = False) -> None:
             )
             cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id)")
             cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors(user_id)")
+
+        if db_type == "postgres":
+            try:
+                cursor.execute("SAVEPOINT add_session_role_sp")
+                cursor.execute("ALTER TABLE sessions ADD COLUMN role TEXT")
+                cursor.execute("RELEASE SAVEPOINT add_session_role_sp")
+            except Exception:
+                try:
+                    cursor.execute("ROLLBACK TO SAVEPOINT add_session_role_sp")
+                    cursor.execute("RELEASE SAVEPOINT add_session_role_sp")
+                except Exception:
+                    pass
+        else:
+            try:
+                cursor.execute("ALTER TABLE sessions ADD COLUMN role TEXT")
+            except Exception:
+                pass
 
         # Migration logic: Copy existing legacy users into dedicated role tables if missing
         _migrate_legacy_users(cursor, db_type)
@@ -574,7 +593,7 @@ def create_user(name: str, email: str, password_hash: str, role: str = "patient"
             )
             user_id = cursor.lastrowid
             cursor.execute(
-                f"INSERT OR REPLACE INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                f"INSERT INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (user_id, name, email, password_hash, status, created_at, created_at),
             )
 
@@ -737,7 +756,25 @@ def _ensure_user_in_main_users_table(cursor, db_type: str, user_id: int) -> None
                         )
 
 
-def create_session(user_id: int) -> str:
+def _find_user_by_id_and_role(conn_or_cursor, db_type: str, user_id: int, role: str | None) -> dict | None:
+    if role == "patient":
+        query = "SELECT id, name, email, 'patient' as role, status, created_at FROM patient_users WHERE id = {}"
+    elif role == "doctor":
+        query = "SELECT id, name, email, 'doctor' as role, status, created_at FROM doctor_users WHERE id = {}"
+    elif role in ("administrator", "admin"):
+        query = "SELECT id, name, email, 'administrator' as role, status, created_at FROM admin_users WHERE id = {}"
+    else:
+        return None
+
+    if db_type == "postgres":
+        conn_or_cursor.execute(query.format("%s"), (user_id,))
+        row = conn_or_cursor.fetchone()
+    else:
+        row = conn_or_cursor.execute(query.format("?"), (user_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def create_session(user_id: int, role: str | None = None) -> str:
     init_user_database()
     token = secrets.token_urlsafe(32)
     token_hash = _hash_token(token)
@@ -748,19 +785,19 @@ def create_session(user_id: int) -> str:
         if db_type == "postgres":
             cursor.execute(
                 """
-                INSERT INTO sessions (token_hash, user_id, created_at)
-                VALUES (%s, %s, %s)
+                INSERT INTO sessions (token_hash, user_id, role, created_at)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT (token_hash) DO NOTHING
                 """,
-                (token_hash, user_id, created_at),
+                (token_hash, user_id, role, created_at),
             )
         else:
             cursor.execute(
                 """
-                INSERT INTO sessions (token_hash, user_id, created_at)
-                VALUES (?, ?, ?)
+                INSERT INTO sessions (token_hash, user_id, role, created_at)
+                VALUES (?, ?, ?, ?)
                 """,
-                (token_hash, user_id, created_at),
+                (token_hash, user_id, role, created_at),
             )
     return token
 
@@ -774,6 +811,17 @@ def find_user_by_token(token: str) -> dict | None:
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
+                "SELECT user_id, role FROM sessions WHERE token_hash = %s",
+                (token_hash,),
+            )
+            session_row = cursor.fetchone()
+            if session_row:
+                user_id = session_row["user_id"]
+                role = session_row.get("role")
+                role_row = _find_user_by_id_and_role(cursor, db_type, user_id, role)
+                if role_row:
+                    return role_row
+            cursor.execute(
                 """
                 SELECT users.id, users.name, users.email, users.role, users.status, users.created_at
                 FROM sessions
@@ -784,10 +832,8 @@ def find_user_by_token(token: str) -> dict | None:
             )
             row = cursor.fetchone()
             if not row:
-                cursor.execute("SELECT user_id FROM sessions WHERE token_hash = %s", (token_hash,))
-                srow = cursor.fetchone()
-                if srow:
-                    uid = srow["user_id"]
+                if session_row:
+                    uid = session_row["user_id"]
                     cursor.execute("SELECT id, name, email, 'patient' as role, status, created_at FROM patient_users WHERE id = %s", (uid,))
                     row = cursor.fetchone()
                     if not row:
@@ -799,6 +845,14 @@ def find_user_by_token(token: str) -> dict | None:
             return dict(row) if row else None
         else:
             conn.row_factory = sqlite3.Row
+            session_row = conn.execute(
+                "SELECT user_id, role FROM sessions WHERE token_hash = ?",
+                (token_hash,),
+            ).fetchone()
+            if session_row:
+                role_row = _find_user_by_id_and_role(conn, db_type, session_row["user_id"], session_row["role"])
+                if role_row:
+                    return role_row
             row = conn.execute(
                 """
                 SELECT users.id, users.name, users.email, users.role, users.status, users.created_at
@@ -809,9 +863,8 @@ def find_user_by_token(token: str) -> dict | None:
                 (token_hash,),
             ).fetchone()
             if not row:
-                srow = conn.execute("SELECT user_id FROM sessions WHERE token_hash = ?", (token_hash,)).fetchone()
-                if srow:
-                    uid = srow["user_id"]
+                if session_row:
+                    uid = session_row["user_id"]
                     row = conn.execute("SELECT id, name, email, 'patient' as role, status, created_at FROM patient_users WHERE id = ?", (uid,)).fetchone()
                     if not row:
                         row = conn.execute("SELECT id, name, email, 'doctor' as role, status, created_at FROM doctor_users WHERE id = ?", (uid,)).fetchone()

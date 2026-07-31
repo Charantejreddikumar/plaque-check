@@ -13,7 +13,7 @@ class SessionUser {
 
   factory SessionUser.fromJson(Map<String, dynamic> json) {
     return SessionUser(
-      userId: json['user_id'] as int? ?? json['userId'] as int? ?? 0,
+      userId: json['user_id'] as int? ?? json['userId'] as int? ?? json['id'] as int? ?? 0,
       fullName: json['name'] as String? ?? json['fullName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       role: json['role'] as String? ?? 'patient',
@@ -23,7 +23,7 @@ class SessionUser {
 
   factory SessionUser.fromLoginJson(Map<String, dynamic> json) {
     return SessionUser(
-      userId: json['user_id'] as int? ?? 0,
+      userId: json['user_id'] as int? ?? json['id'] as int? ?? 0,
       fullName: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
       role: json['role'] as String? ?? 'patient',

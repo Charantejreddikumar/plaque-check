@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 
@@ -89,7 +90,7 @@ class _DoctorSideNavState extends State<DoctorSideNav> {
   bool _isCollapsed = false;
 
   Future<void> _logout() async {
-    await SessionManager.clearSession();
+    await AuthService().logout();
     if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/role-selection', (route) => false);
   }

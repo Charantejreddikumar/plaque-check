@@ -45,11 +45,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final user = await _authService.login(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      await SessionManager.clearAllUserData();
+      final SessionUser user;
+      if (_selectedRole == 'doctor') {
+        user = await _authService.doctorLogin(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } else if (_selectedRole == 'administrator') {
+        user = await _authService.adminLogin(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } else {
+        user = await _authService.patientLogin(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
+      await SessionManager.clearSession();
       await SessionManager.saveSession(user);
       if (!mounted) return;
 

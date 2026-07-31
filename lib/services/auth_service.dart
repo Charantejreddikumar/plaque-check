@@ -130,6 +130,52 @@ class AuthService {
     return login(email: email, password: password, endpoint: '/admin/login');
   }
 
+  Future<SessionUser> currentUser(String accessToken) async {
+    final url = Uri.parse('$_baseUrl/me');
+    late final http.Response response;
+    try {
+      response = await _client.get(
+        url,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+    } catch (error, stack) {
+      debugPrint('ME EXCEPTION: $error');
+      debugPrint(stack.toString());
+      throw const AuthException('Unable to validate the saved session.');
+    }
+
+    final body = _decodeBody(response.body, context: 'ME');
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthException(_errorMessage(body, 'Session expired. Please log in again.'));
+    }
+
+    final user = SessionUser.fromJson(body);
+    return SessionUser(
+      userId: user.userId,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      accessToken: accessToken,
+    );
+  }
+
+  Future<void> logout() async {
+    final user = await SessionManager.currentUser();
+    final token = user?.accessToken ?? '';
+
+    if (token.isNotEmpty) {
+      final url = Uri.parse('$_baseUrl/logout');
+      try {
+        await _client.post(url, headers: {'Authorization': 'Bearer $token'});
+      } catch (error, stack) {
+        debugPrint('LOGOUT EXCEPTION: $error');
+        debugPrint(stack.toString());
+      }
+    }
+
+    await SessionManager.clearSession();
+  }
+
   Map<String, dynamic> _decodeBody(String source, {required String context}) {
     try {
       final decoded = jsonDecode(source);

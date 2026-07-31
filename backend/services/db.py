@@ -100,6 +100,11 @@ def get_db_connection(db_name: str = "plaquecheck.db"):
         return
 
     LOCAL_DB_DIR.mkdir(parents=True, exist_ok=True)
+    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TEST_DB_NAME"):
+        test_prefix = os.getenv("TEST_DB_PREFIX", "test_")
+        if not db_name.startswith(test_prefix):
+            db_name = f"{test_prefix}{db_name}"
+
     db_path = LOCAL_DB_DIR / db_name
     conn = sqlite3.connect(db_path)
     try:

@@ -73,7 +73,7 @@ class ApiService {
       final body = _decodeBody(response.body);
 
       if (response.statusCode == 401) {
-        await SessionManager.clearAllUserData();
+        await SessionManager.clearSession();
         throw const ApiException('Session expired. Please log in again.');
       }
 
@@ -142,7 +142,7 @@ class ApiService {
       final body = _decodeBody(response.body);
 
       if (response.statusCode == 401) {
-        await SessionManager.clearAllUserData();
+        await SessionManager.clearSession();
         throw const ApiException('Session expired. Please log in again.');
       }
 
@@ -198,7 +198,7 @@ class ApiService {
       debugPrint('REPORTS RESPONSE: ${response.body}');
 
       if (response.statusCode == 401) {
-        await SessionManager.clearAllUserData();
+        await SessionManager.clearSession();
         throw const ApiException('Session expired. Please log in again.');
       }
 

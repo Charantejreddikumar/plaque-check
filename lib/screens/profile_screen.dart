@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../services/plaque_prediction.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
@@ -136,7 +137,7 @@ class ProfileScreen extends StatelessWidget {
                   label: 'Logout',
                   icon: Icons.logout,
                   onPressed: () async {
-                    await SessionManager.clearAllUserData();
+                    await AuthService().logout();
                     if (!context.mounted) {
                       return;
                     }

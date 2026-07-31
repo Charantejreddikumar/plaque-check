@@ -40,7 +40,7 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
-      await SessionManager.clearAllUserData();
+      await SessionManager.clearSession();
       await SessionManager.saveSession(user);
       if (!mounted) return;
 

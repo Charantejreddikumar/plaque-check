@@ -40,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await SessionManager.clearAllUserData();
+      await SessionManager.clearSession();
       await _authService.register(
         name: _nameController.text,
         email: _emailController.text,

@@ -41,7 +41,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
-      await SessionManager.clearAllUserData();
+      await SessionManager.clearSession();
       await SessionManager.saveSession(user);
       if (!mounted) return;
 

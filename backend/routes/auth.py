@@ -198,7 +198,7 @@ def patient_login(payload: LoginRequest) -> dict:
         logger.warning("[AUTH FAILURE] Patient login rejected: Account %s is deactivated", email)
         raise HTTPException(status_code=403, detail="Account deactivated. Please contact Administrator.")
 
-    token = create_session(user["id"])
+    token = create_session(user["id"], role="patient")
     log_audit_event(user["id"], "LOGIN", f"Patient logged in: {email}")
     logger.info("[AUTH SUCCESS] Patient authenticated successfully: %s (User ID: %s)", email, user["id"])
 
@@ -242,7 +242,7 @@ def doctor_login(payload: LoginRequest) -> dict:
             detail="Your Doctor account registration is pending Administrator approval. You will receive access once verified.",
         )
 
-    token = create_session(user["id"])
+    token = create_session(user["id"], role="doctor")
     log_audit_event(user["id"], "LOGIN", f"Doctor logged in: {email}")
     logger.info("[AUTH SUCCESS] Doctor authenticated successfully: %s (User ID: %s)", email, user["id"])
 
@@ -272,7 +272,7 @@ def admin_login(payload: LoginRequest) -> dict:
         logger.warning("[AUTH FAILURE] Admin login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_session(user["id"])
+    token = create_session(user["id"], role="administrator")
     log_audit_event(user["id"], "LOGIN", f"Admin logged in: {email}")
     logger.info("[AUTH SUCCESS] Admin authenticated successfully: %s (User ID: %s)", email, user["id"])
 

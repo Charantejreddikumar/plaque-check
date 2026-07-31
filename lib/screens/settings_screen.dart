@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
@@ -101,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
                   label: 'Logout',
                   icon: Icons.logout,
                   onPressed: () async {
-                    await SessionManager.clearSession();
+                    await AuthService().logout();
                     if (!context.mounted) {
                       return;
                     }

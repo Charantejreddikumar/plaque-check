@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -43,16 +44,28 @@ class _SplashScreenState extends State<SplashScreen>
 
     Future.delayed(const Duration(seconds: 2), () async {
       if (!mounted) return;
-      final user = await SessionManager.currentUser();
+      final savedUser = await SessionManager.currentUser();
       if (!mounted) return;
-      if (user == null) {
+      if (savedUser == null || savedUser.accessToken.isEmpty) {
         Navigator.pushReplacementNamed(context, '/role-selection');
-      } else if (user.role == 'doctor') {
-        Navigator.pushReplacementNamed(context, '/doctor-dashboard');
-      } else if (user.role == 'administrator') {
-        Navigator.pushReplacementNamed(context, '/admin-dashboard');
-      } else {
-        Navigator.pushReplacementNamed(context, '/dashboard');
+        return;
+      }
+
+      try {
+        final verifiedUser = await AuthService().currentUser(savedUser.accessToken);
+        await SessionManager.saveSession(verifiedUser);
+        if (!mounted) return;
+        if (verifiedUser.role == 'doctor') {
+          Navigator.pushReplacementNamed(context, '/doctor-dashboard');
+        } else if (verifiedUser.role == 'administrator') {
+          Navigator.pushReplacementNamed(context, '/admin-dashboard');
+        } else {
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        }
+      } catch (_) {
+        await SessionManager.clearSession();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/role-selection');
       }
     });
   }

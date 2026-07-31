@@ -48,7 +48,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      await SessionManager.clearAllUserData();
+      await SessionManager.clearSession();
       await SessionManager.saveSession(user);
       if (!mounted) return;
 
@@ -350,4 +350,3 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     );
   }
 }
-
