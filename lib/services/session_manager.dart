@@ -132,6 +132,27 @@ class SessionManager {
     await prefs.remove(_accessTokenKey);
   }
 
+  static Future<void> clearPatientSession() async {
+    final user = await currentUser();
+    if (user == null || user.isPatient) {
+      await clearSession();
+    }
+  }
+
+  static Future<void> clearDoctorSession() async {
+    final user = await currentUser();
+    if (user == null || user.isDoctor) {
+      await clearSession();
+    }
+  }
+
+  static Future<void> clearAdminSession() async {
+    final user = await currentUser();
+    if (user == null || user.isAdmin) {
+      await clearSession();
+    }
+  }
+
   static Future<void> clearAllUserData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

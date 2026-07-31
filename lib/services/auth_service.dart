@@ -101,7 +101,10 @@ class AuthService {
     } catch (error, stack) {
       debugPrint('LOGIN EXCEPTION: $error');
       debugPrint(stack.toString());
-      rethrow;
+      if (error is AuthException) {
+        rethrow;
+      }
+      throw const AuthException('Unable to connect to the backend server. Please check your network connection.');
     }
 
     debugPrint('LOGIN STATUS CODE: ${response.statusCode}');
