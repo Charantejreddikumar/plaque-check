@@ -54,6 +54,31 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>> registerDoctor(Map<String, dynamic> payload) async {
+    final url = Uri.parse('$_baseUrl/register/doctor');
+    debugPrint('REGISTER DOCTOR URL: $url');
+    debugPrint('REGISTER DOCTOR BODY: ${jsonEncode(payload)}');
+
+    late final http.Response response;
+    try {
+      response = await _client.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+    } catch (error, stack) {
+      debugPrint('REGISTER DOCTOR EXCEPTION: $error');
+      debugPrint(stack.toString());
+      throw const AuthException('Unable to reach the backend.');
+    }
+
+    final body = _decodeBody(response.body, context: 'REGISTER_DOCTOR');
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthException(_errorMessage(body, 'Doctor registration failed.'));
+    }
+    return body;
+  }
+
   Future<SessionUser> login({
     required String email,
     required String password,

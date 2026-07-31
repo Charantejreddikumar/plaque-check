@@ -644,6 +644,20 @@ class ApiService {
     return response.body;
   }
 
+  Future<Map<String, dynamic>> registerDoctor(Map<String, dynamic> payload) async {
+    final url = Uri.parse('$_baseUrl/register/doctor');
+    final response = await _client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    final body = _decodeBody(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(_errorMessage(body));
+    }
+    return body;
+  }
+
   String mediaUrl(String relativePath, {String? token}) {
     if (relativePath.isEmpty || relativePath.startsWith('http')) {
       return relativePath;

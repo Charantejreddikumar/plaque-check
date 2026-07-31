@@ -354,46 +354,70 @@ def _migrate_legacy_users(cursor, db_type: str) -> None:
 
 
 def _seed_default_admin_internal(cursor, db_type: str) -> None:
-    admin_email = "admin@plaquecheck.com"
     now_str = datetime.now(timezone.utc).isoformat()
-    if db_type == "postgres":
-        try:
-            cursor.execute("SAVEPOINT seed_sp")
-            cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
-            row = cursor.fetchone()
+    default_pass = pwd_context.hash("password123")
 
-            if not row:
-                admin_pass = pwd_context.hash("password123")
-                cursor.execute(
-                    "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, 'administrator', 'active', %s) RETURNING id",
-                    ("System Admin", admin_email, admin_pass, now_str),
-                )
-                aid = cursor.fetchone()[0]
-                cursor.execute(
-                    "INSERT INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, 'active', %s, %s) ON CONFLICT (email) DO NOTHING",
-                    (aid, "System Admin", admin_email, admin_pass, now_str, now_str),
-                )
-            cursor.execute("RELEASE SAVEPOINT seed_sp")
-        except Exception:
+    accounts = [
+        ("System Admin", "admin@plaquecheck.com", "administrator", "active", "admin_users"),
+        ("Dr. Sarah Jenkins", "doctor@plaquecheck.com", "doctor", "active", "doctor_users"),
+        ("John Patient", "patient@plaquecheck.com", "patient", "active", "patient_users"),
+    ]
+
+    for name, email, role, status, table_name in accounts:
+        if db_type == "postgres":
             try:
-                cursor.execute("ROLLBACK TO SAVEPOINT seed_sp")
+                cursor.execute("SAVEPOINT seed_account_sp")
+                cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+                row = cursor.fetchone()
+                if not row:
+                    cursor.execute(
+                        "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+                        (name, email, default_pass, role, status, now_str),
+                    )
+                    uid = cursor.fetchone()[0]
+                    cursor.execute(
+                        f"INSERT INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO NOTHING",
+                        (uid, name, email, default_pass, status, now_str, now_str),
+                    )
+                    if role == "doctor":
+                        cursor.execute(
+                            "INSERT INTO doctors (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, approval_status, created_at) VALUES (%s, '555-0199', 'BDS, MDS', 'Periodontics', 'MC-998822', 'PlaqueCheck Dental', 'City Dental Hospital', 'approved', %s) ON CONFLICT (user_id) DO NOTHING",
+                            (uid, now_str),
+                        )
+                    elif role == "patient":
+                        cursor.execute(
+                            "INSERT INTO patients (user_id, age, gender, phone, medical_history, created_at) VALUES (%s, 30, 'Other', '555-0100', 'None', %s) ON CONFLICT (user_id) DO NOTHING",
+                            (uid, now_str),
+                        )
+                cursor.execute("RELEASE SAVEPOINT seed_account_sp")
             except Exception:
-                pass
-    else:
-        cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (admin_email,))
-        row = cursor.fetchone()
-
-        if not row:
-            admin_pass = pwd_context.hash("password123")
-            cursor.execute(
-                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, 'administrator', 'active', ?)",
-                ("System Admin", admin_email, admin_pass, now_str),
-            )
-            aid = cursor.lastrowid
-            cursor.execute(
-                "INSERT OR IGNORE INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)",
-                (aid, "System Admin", admin_email, admin_pass, now_str, now_str),
-            )
+                try:
+                    cursor.execute("ROLLBACK TO SAVEPOINT seed_account_sp")
+                except Exception:
+                    pass
+        else:
+            cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (email,))
+            row = cursor.fetchone()
+            if not row:
+                cursor.execute(
+                    "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (name, email, default_pass, role, status, now_str),
+                )
+                uid = cursor.lastrowid
+                cursor.execute(
+                    f"INSERT OR IGNORE INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (uid, name, email, default_pass, status, now_str, now_str),
+                )
+                if role == "doctor":
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO doctors (user_id, mobile, qualification, specialization, registration_number, clinic_name, hospital_name, approval_status, created_at) VALUES (?, '555-0199', 'BDS, MDS', 'Periodontics', 'MC-998822', 'PlaqueCheck Dental', 'City Dental Hospital', 'approved', ?)",
+                        (uid, now_str),
+                    )
+                elif role == "patient":
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO patients (user_id, age, gender, phone, medical_history, created_at) VALUES (?, 30, 'Other', '555-0100', 'None', ?)",
+                        (uid, now_str),
+                    )
 
 
 # Role-Isolated Lookup Functions
