@@ -75,7 +75,7 @@ def run_supabase_migration():
         sys.exit(1)
 
     print("\n[1/3] Initializing User & Role Authentication Tables (patient_users, doctor_users, admin_users)...")
-    init_user_database()
+    init_user_database(force=True)
 
     print("[2/3] Initializing Clinical Reports & Audit Database (reports, notifications, audit_logs)...")
     init_database()

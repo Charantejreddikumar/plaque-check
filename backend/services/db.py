@@ -31,7 +31,7 @@ def _get_clean_database_url() -> str:
         or os.getenv("database_url")
         or ""
     ).strip()
-    if not url:
+    if not url or "YOUR-PROJECT-REF" in url or "YOUR-PASSWORD" in url:
         return ""
 
     if url.startswith("postgres://"):

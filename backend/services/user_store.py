@@ -34,7 +34,14 @@ def verify_password_hash(plain_password: str, hashed_password: str) -> bool:
     return False
 
 
-def init_user_database() -> None:
+_user_db_initialized = False
+
+
+def init_user_database(force: bool = False) -> None:
+    global _user_db_initialized
+    if _user_db_initialized and not force:
+        return
+
     with get_db_connection("users.db") as (db_type, conn):
         cursor = conn.cursor()
         if db_type == "postgres":
@@ -107,7 +114,7 @@ def init_user_database() -> None:
                 """
                 CREATE TABLE IF NOT EXISTS doctors (
                     id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
                     mobile TEXT,
                     qualification TEXT,
                     specialization TEXT,
@@ -123,7 +130,7 @@ def init_user_database() -> None:
                 """
                 CREATE TABLE IF NOT EXISTS patients (
                     id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
                     age INTEGER,
                     gender TEXT,
                     phone TEXT,
@@ -158,6 +165,8 @@ def init_user_database() -> None:
                 )
                 """
             )
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id)")
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors(user_id)")
         else:
             cursor.execute(
                 """
@@ -225,7 +234,7 @@ def init_user_database() -> None:
                 """
                 CREATE TABLE IF NOT EXISTS doctors (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL UNIQUE,
                     mobile TEXT,
                     qualification TEXT,
                     specialization TEXT,
@@ -242,7 +251,7 @@ def init_user_database() -> None:
                 """
                 CREATE TABLE IF NOT EXISTS patients (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL UNIQUE,
                     age INTEGER,
                     gender TEXT,
                     phone TEXT,
@@ -279,10 +288,14 @@ def init_user_database() -> None:
                 )
                 """
             )
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id)")
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors(user_id)")
 
         # Migration logic: Copy existing legacy users into dedicated role tables if missing
         _migrate_legacy_users(cursor, db_type)
         _seed_default_admin_internal(cursor, db_type)
+
+    _user_db_initialized = True
 
 
 def _migrate_legacy_users(cursor, db_type: str) -> None:
@@ -346,19 +359,19 @@ def _seed_default_admin_internal(cursor, db_type: str) -> None:
     if db_type == "postgres":
         try:
             cursor.execute("SAVEPOINT seed_sp")
-            cursor.execute("SELECT id FROM admin_users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
+            cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (admin_email,))
             row = cursor.fetchone()
 
             if not row:
                 admin_pass = pwd_context.hash("password123")
                 cursor.execute(
-                    "INSERT INTO admin_users (name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, 'active', %s, %s) RETURNING id",
-                    ("System Admin", admin_email, admin_pass, now_str, now_str),
+                    "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, 'administrator', 'active', %s) RETURNING id",
+                    ("System Admin", admin_email, admin_pass, now_str),
                 )
                 aid = cursor.fetchone()[0]
                 cursor.execute(
-                    "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'administrator', 'active', %s) ON CONFLICT (email) DO NOTHING",
-                    (aid, "System Admin", admin_email, admin_pass, now_str),
+                    "INSERT INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, 'active', %s, %s) ON CONFLICT (email) DO NOTHING",
+                    (aid, "System Admin", admin_email, admin_pass, now_str, now_str),
                 )
             cursor.execute("RELEASE SAVEPOINT seed_sp")
         except Exception:
@@ -367,19 +380,19 @@ def _seed_default_admin_internal(cursor, db_type: str) -> None:
             except Exception:
                 pass
     else:
-        cursor.execute("SELECT id FROM admin_users WHERE LOWER(email) = LOWER(?)", (admin_email,))
+        cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (admin_email,))
         row = cursor.fetchone()
 
         if not row:
             admin_pass = pwd_context.hash("password123")
             cursor.execute(
-                "INSERT INTO admin_users (name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)",
-                ("System Admin", admin_email, admin_pass, now_str, now_str),
+                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, 'administrator', 'active', ?)",
+                ("System Admin", admin_email, admin_pass, now_str),
             )
             aid = cursor.lastrowid
             cursor.execute(
-                "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, 'administrator', 'active', ?)",
-                (aid, "System Admin", admin_email, admin_pass, now_str),
+                "INSERT OR IGNORE INTO admin_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)",
+                (aid, "System Admin", admin_email, admin_pass, now_str, now_str),
             )
 
 
@@ -500,23 +513,23 @@ def create_user(name: str, email: str, password_hash: str, role: str = "patient"
         logger.info("[DB INSERT ATTEMPT] Inserting user into %s for email: %s (DB: %s)", table_name, email, db_type)
         if db_type == "postgres":
             cursor.execute(
-                f"INSERT INTO {table_name} (name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
-                (name, email, password_hash, status, created_at, created_at),
+                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+                (name, email, password_hash, role, status, created_at),
             )
             user_id = cursor.fetchone()[0]
             cursor.execute(
-                "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role",
-                (user_id, name, email, password_hash, role, status, created_at),
+                f"INSERT INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash, status = EXCLUDED.status, updated_at = EXCLUDED.updated_at",
+                (user_id, name, email, password_hash, status, created_at, created_at),
             )
         else:
             cursor.execute(
-                f"INSERT INTO {table_name} (name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (name, email, password_hash, status, created_at, created_at),
+                "INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (name, email, password_hash, role, status, created_at),
             )
             user_id = cursor.lastrowid
             cursor.execute(
-                "INSERT OR REPLACE INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (user_id, name, email, password_hash, role, status, created_at),
+                f"INSERT OR REPLACE INTO {table_name} (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (user_id, name, email, password_hash, status, created_at, created_at),
             )
 
         if role == "patient":
@@ -615,12 +628,12 @@ def get_doctor_profile(user_id: int) -> dict | None:
 def _init_patient_profile(cursor, db_type, user_id: int, created_at: str):
     if db_type == "postgres":
         cursor.execute(
-            "INSERT INTO patients (user_id, created_at) VALUES (%s, %s)",
+            "INSERT INTO patients (user_id, created_at) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING",
             (user_id, created_at),
         )
     else:
         cursor.execute(
-            "INSERT INTO patients (user_id, created_at) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO patients (user_id, created_at) VALUES (?, ?)",
             (user_id, created_at),
         )
 
@@ -879,15 +892,16 @@ def update_patient_profile(user_id: int, age: int | None, gender: str, phone: st
     init_user_database()
     with get_db_connection("users.db") as (db_type, conn):
         cursor = conn.cursor()
+        created_at = datetime.now(timezone.utc).isoformat()
         if db_type == "postgres":
             cursor.execute(
                 """
                 INSERT INTO patients (user_id, age, gender, phone, medical_history, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE
+                ON CONFLICT (user_id) DO UPDATE
                 SET age = EXCLUDED.age, gender = EXCLUDED.gender, phone = EXCLUDED.phone, medical_history = EXCLUDED.medical_history
                 """,
-                (user_id, age, gender, phone, medical_history, datetime.now(timezone.utc).isoformat()),
+                (user_id, age, gender, phone, medical_history, created_at),
             )
         else:
             cursor.execute(
@@ -898,6 +912,14 @@ def update_patient_profile(user_id: int, age: int | None, gender: str, phone: st
                 """,
                 (age, gender, phone, medical_history, user_id),
             )
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    """
+                    INSERT INTO patients (user_id, age, gender, phone, medical_history, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (user_id, age, gender, phone, medical_history, created_at),
+                )
     return get_patient_profile(user_id) or {}
 
 

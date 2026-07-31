@@ -34,6 +34,11 @@ htmlcov/
 # Logs
 *.log
 
+# Environment
+.env
+*.env
+backend/.env
+
 # Dataset
 backend/dataset/
 

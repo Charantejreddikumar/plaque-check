@@ -11,24 +11,29 @@ client = TestClient(app)
 
 def test_db_type_dynamic():
     # Verify get_db_type returns sqlite when DATABASE_URL is empty
-    orig_env = os.environ.get("DATABASE_URL")
+    env_keys = ("SUPABASE_DATABASE_URL", "SUPABASE_DB_URL", "DATABASE_URL", "Database_URL", "database_url")
+    orig_env = {k: os.environ.get(k) for k in env_keys}
     try:
+        for k in env_keys:
+            os.environ.pop(k, None)
         os.environ["DATABASE_URL"] = ""
         assert get_db_type() == "sqlite"
 
         os.environ["DATABASE_URL"] = "postgresql://user:pass@localhost:5432/dbname"
         assert get_db_type() == "postgres"
     finally:
-        if orig_env is None:
-            os.environ.pop("DATABASE_URL", None)
-        else:
-            os.environ["DATABASE_URL"] = orig_env
+        for k, v in orig_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
 
 def test_clean_database_url_bracket_and_case_handling():
-    orig_env = {k: os.environ.get(k) for k in ("DATABASE_URL", "Database_URL", "database_url")}
+    env_keys = ("SUPABASE_DATABASE_URL", "SUPABASE_DB_URL", "DATABASE_URL", "Database_URL", "database_url")
+    orig_env = {k: os.environ.get(k) for k in env_keys}
     try:
-        for k in ("DATABASE_URL", "Database_URL", "database_url"):
+        for k in env_keys:
             os.environ.pop(k, None)
 
         # Test Database_URL casing tolerance and [bracket] stripping + '#' encoding
