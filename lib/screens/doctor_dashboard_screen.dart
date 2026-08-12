@@ -26,20 +26,45 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     _loadData();
   }
 
+  String? _loadError;
+
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    debugPrint('[DIAGNOSTIC] DOCTOR DASHBOARD FETCH START');
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
-      final user = await SessionManager.currentUser();
-      final data = await _apiService.fetchDoctorDashboard();
+      final results = await Future.wait([
+        SessionManager.currentUser(),
+        _apiService.fetchDoctorDashboard().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchDoctorDashboard error: $e');
+          return <String, dynamic>{};
+        }),
+      ]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('[DIAGNOSTIC] DOCTOR DASHBOARD FETCH TIMEOUT');
+          return [null, {}];
+        },
+      );
+
       if (!mounted) return;
       setState(() {
-        _user = user;
-        _dashboardData = data;
-        _isLoading = false;
+        _user = results[0] as SessionUser?;
+        _dashboardData = results[1] as Map<String, dynamic>;
       });
-    } catch (_) {
+      debugPrint('[DIAGNOSTIC] DOCTOR DASHBOARD FETCH COMPLETE');
+    } catch (e) {
+      debugPrint('[DIAGNOSTIC] DOCTOR DASHBOARD FETCH ERROR: $e');
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _loadError = 'Failed to load doctor dashboard. Tap to retry.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

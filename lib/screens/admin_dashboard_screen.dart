@@ -70,39 +70,94 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     super.dispose();
   }
 
+  String? _loadError;
+
   Future<void> _loadAllAdminData() async {
-    setState(() => _isLoading = true);
+    debugPrint('[DIAGNOSTIC] DASHBOARD FETCH START');
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+
     try {
-      final dash = await _apiService.fetchAdminDashboard();
-      final pts = await _apiService.fetchAdminPatients(query: _patientSearchQuery, filterType: _patientFilter);
-      final docs = await _apiService.fetchDoctorsList();
-      final rpts = await _apiService.fetchAdminReports(filterType: _reportFilter, query: _reportSearchQuery);
-      final ai = await _apiService.fetchAiMonitoringStatus();
-      final aly = await _apiService.fetchAdminAnalyticsData();
-      final notifs = await _apiService.fetchAdminNotifications();
-      final sys = await _apiService.fetchSystemHealth();
-      final logs = await _apiService.fetchAuditLogs();
-      final stg = await _apiService.fetchStorageStats();
-      final prof = await _apiService.fetchAdminProfile();
+      final results = await Future.wait([
+        _apiService.fetchAdminDashboard().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAdminDashboard error: $e');
+          return <String, dynamic>{};
+        }),
+        _apiService.fetchAdminPatients(query: _patientSearchQuery, filterType: _patientFilter).catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAdminPatients error: $e');
+          return <dynamic>[];
+        }),
+        _apiService.fetchDoctorsList().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchDoctorsList error: $e');
+          return <dynamic>[];
+        }),
+        _apiService.fetchAdminReports(filterType: _reportFilter, query: _reportSearchQuery).catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAdminReports error: $e');
+          return <dynamic>[];
+        }),
+        _apiService.fetchAiMonitoringStatus().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAiMonitoringStatus error: $e');
+          return <String, dynamic>{};
+        }),
+        _apiService.fetchAdminAnalyticsData().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAdminAnalyticsData error: $e');
+          return <String, dynamic>{};
+        }),
+        _apiService.fetchAdminNotifications().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAdminNotifications error: $e');
+          return <dynamic>[];
+        }),
+        _apiService.fetchSystemHealth().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchSystemHealth error: $e');
+          return <String, dynamic>{};
+        }),
+        _apiService.fetchAuditLogs().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAuditLogs error: $e');
+          return <dynamic>[];
+        }),
+        _apiService.fetchStorageStats().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchStorageStats error: $e');
+          return <String, dynamic>{};
+        }),
+        _apiService.fetchAdminProfile().catchError((e) {
+          debugPrint('[DIAGNOSTIC] fetchAdminProfile error: $e');
+          return <String, dynamic>{};
+        }),
+      ]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('[DIAGNOSTIC] DASHBOARD FETCH TIMEOUT');
+          return [{}, [], [], [], {}, {}, [], {}, [], {}, {}];
+        },
+      );
 
       if (!mounted) return;
       setState(() {
-        _dashboardData = dash;
-        _patients = pts;
-        _doctors = docs;
-        _reports = rpts;
-        _aiStatus = ai;
-        _analyticsData = aly;
-        _notifications = notifs;
-        _systemHealth = sys;
-        _auditLogs = logs;
-        _storageStats = stg;
-        _adminProfile = prof;
-        _isLoading = false;
+        _dashboardData = results[0] as Map<String, dynamic>;
+        _patients = results[1] as List<dynamic>;
+        _doctors = results[2] as List<dynamic>;
+        _reports = results[3] as List<dynamic>;
+        _aiStatus = results[4] as Map<String, dynamic>;
+        _analyticsData = results[5] as Map<String, dynamic>;
+        _notifications = results[6] as List<dynamic>;
+        _systemHealth = results[7] as Map<String, dynamic>;
+        _auditLogs = results[8] as List<dynamic>;
+        _storageStats = results[9] as Map<String, dynamic>;
+        _adminProfile = results[10] as Map<String, dynamic>;
       });
-    } catch (_) {
+      debugPrint('[DIAGNOSTIC] DASHBOARD FETCH COMPLETE');
+    } catch (e) {
+      debugPrint('[DIAGNOSTIC] DASHBOARD FETCH ERROR: $e');
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _loadError = 'Failed to load dashboard data. Please tap Retry.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

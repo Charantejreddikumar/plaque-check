@@ -43,18 +43,27 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic));
 
     Future.delayed(const Duration(seconds: 2), () async {
+      debugPrint('[DIAGNOSTIC] APP START');
+      debugPrint('[DIAGNOSTIC] SESSION CHECK START');
       if (!mounted) return;
       final savedUser = await SessionManager.currentUser();
+      debugPrint('[DIAGNOSTIC] SESSION CHECK COMPLETE: ${savedUser?.email ?? "none"}');
       if (!mounted) return;
       if (savedUser == null || savedUser.accessToken.isEmpty) {
+        debugPrint('[DIAGNOSTIC] NAVIGATION START -> /role-selection');
         Navigator.pushReplacementNamed(context, '/role-selection');
         return;
       }
 
       try {
+        debugPrint('[DIAGNOSTIC] PROFILE FETCH START');
+        debugPrint('[DIAGNOSTIC] ROLE FETCH START');
         final verifiedUser = await AuthService().currentUser(savedUser.accessToken);
+        debugPrint('[DIAGNOSTIC] PROFILE FETCH COMPLETE');
+        debugPrint('[DIAGNOSTIC] ROLE FETCH COMPLETE: role=${verifiedUser.role}');
         await SessionManager.saveSession(verifiedUser);
         if (!mounted) return;
+        debugPrint('[DIAGNOSTIC] NAVIGATION START');
         if (verifiedUser.role == 'doctor') {
           Navigator.pushReplacementNamed(context, '/doctor-dashboard');
         } else if (verifiedUser.role == 'administrator') {
@@ -62,7 +71,8 @@ class _SplashScreenState extends State<SplashScreen>
         } else {
           Navigator.pushReplacementNamed(context, '/dashboard');
         }
-      } catch (_) {
+      } catch (e) {
+        debugPrint('[DIAGNOSTIC] SESSION VERIFICATION FAILED: $e');
         await SessionManager.clearSession();
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/role-selection');
