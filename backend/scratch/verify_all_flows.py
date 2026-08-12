@@ -30,7 +30,9 @@ def run_all_tests():
     print("=== STARTING FULL END-TO-END PLAQUECHECK TEST SEQUENCE ===")
     
     # 1. Database Initialization
-    print("1. Confirming database initialization...")
+    from database import get_db_type
+    db_backend = get_db_type().upper()
+    print(f"1. Confirming database initialization... (DATABASE BACKEND: {db_backend})")
     init_all_tables()
     init_user_database(force=True)
     

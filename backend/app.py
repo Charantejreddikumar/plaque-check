@@ -125,7 +125,8 @@ def startup() -> None:
     init_all_tables()
     migrate_legacy_databases()
     init_user_database(force=True)
-    logger.info("PlaqueCheck backend started with single SQLite database plaquecheck.db.")
+    db_engine = get_db_type().upper()
+    logger.info("[STARTUP] PlaqueCheck backend started with database engine: %s", db_engine)
 
 
 @app.get("/")

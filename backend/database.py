@@ -65,42 +65,55 @@ def _get_clean_database_url() -> str:
 
 def get_db_type() -> str:
     url = _get_clean_database_url()
-    return "postgres" if url else "sqlite"
+    use_supabase_env = os.getenv("USE_SUPABASE", "").lower()
+    is_production = os.getenv("RENDER") or os.getenv("ENVIRONMENT") == "production"
+    if use_supabase_env in ("true", "1", "yes") or is_production or url:
+        return "postgres"
+    return "sqlite"
 
 
 @contextmanager
 def get_db_connection(db_name: str = DEFAULT_DB_NAME):
     url = _get_clean_database_url()
-    conn = None
-    if url:
+    use_supabase = os.getenv("USE_SUPABASE", "").lower() in ("true", "1", "yes")
+    is_production = os.getenv("RENDER") or os.getenv("ENVIRONMENT") == "production"
+
+    if use_supabase or is_production or url:
+        if not url:
+            logger.error("[DB CONNECTION CRITICAL] Production/Supabase mode enabled but SUPABASE_DATABASE_URL is missing or invalid!")
+            raise RuntimeError(
+                "DATABASE CONNECTION ERROR: Production mode requires a valid Supabase PostgreSQL connection URL. "
+                "Please configure SUPABASE_DATABASE_URL in backend/.env or Render environment variables."
+            )
         try:
-            conn = psycopg2.connect(url, connect_timeout=10)
+            conn = psycopg2.connect(url, connect_timeout=15)
             conn.autocommit = False
             host_match = re.search(r"@([^:/]+)", url)
             host_str = host_match.group(1) if host_match else "Supabase PostgreSQL"
-            logger.info("[SUPABASE CONNECT SUCCESS] Connected to PostgreSQL (%s)", host_str)
+            logger.info("[DB CONNECTION SUCCESS] BACKEND: POSTGRESQL | HOST: %s | DATABASE: postgres", host_str)
+            try:
+                yield ("postgres", conn)
+                conn.commit()
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                raise
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            return
         except Exception as exc:
-            logger.error("[SUPABASE CONNECT FAILURE] Failed to connect to PostgreSQL: %s", exc)
-            raise RuntimeError(f"Database Connection Error: Unable to connect to Supabase PostgreSQL: {exc}") from exc
+            logger.error("[DB CONNECTION FAILURE] Failed to connect to Supabase PostgreSQL: %s", exc)
+            raise RuntimeError(
+                f"DATABASE CONNECTION ERROR: Failed connecting to Supabase PostgreSQL ({url.split('@')[-1]}): {exc}"
+            ) from exc
 
-    if conn:
-        try:
-            yield ("postgres", conn)
-            conn.commit()
-        except Exception:
-            try:
-                conn.rollback()
-            except Exception:
-                pass
-            raise
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
-        return
-
-    # SQLite Single Database Logic
+    # SQLite Development-Only Logic (Disabled in Production)
+    logger.warning("[DB CONNECTION] BACKEND: SQLITE (DEVELOPMENT FALLBACK ONLY - NOT FOR PRODUCTION USE)")
     LOCAL_DB_DIR.mkdir(parents=True, exist_ok=True)
     
     # Redirect legacy db name calls to plaquecheck.db
