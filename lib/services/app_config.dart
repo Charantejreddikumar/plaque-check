@@ -5,29 +5,19 @@ class AppConfig {
   const AppConfig._();
 
   static const apiBaseUrlEnvironmentKey = 'PLAQUECHECK_API_BASE_URL';
+  static const defaultApiBaseUrl = 'https://plaque-check-backend.onrender.com';
   static const backendUrlPreferenceKey = 'developer_backend_url';
-
-  static String get defaultApiBaseUrl {
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.linux) {
-      return 'http://127.0.0.1:8000';
-    }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000';
-    }
-    return 'http://127.0.0.1:8000';
-  }
 
   static String? _savedApiBaseUrl;
 
   static String get apiBaseUrl {
-    if (_savedApiBaseUrl != null) {
-      return normalizeApiBaseUrl(_savedApiBaseUrl!);
-    }
-
     const configured = String.fromEnvironment(apiBaseUrlEnvironmentKey);
-
     if (configured.isNotEmpty) {
       return normalizeApiBaseUrl(configured);
+    }
+
+    if (_savedApiBaseUrl != null && _savedApiBaseUrl!.trim().isNotEmpty) {
+      return normalizeApiBaseUrl(_savedApiBaseUrl!);
     }
 
     return normalizeApiBaseUrl(defaultApiBaseUrl);
