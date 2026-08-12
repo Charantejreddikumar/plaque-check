@@ -9,7 +9,7 @@ if str(backend_dir) not in sys.path:
 
 @pytest.fixture(autouse=True, scope="session")
 def setup_test_environment():
-    os.environ["TEST_DB_NAME"] = "test_users.db"
+    os.environ["TEST_DB_NAME"] = "test_plaquecheck.db"
     db_dir = backend_dir / "database"
     if db_dir.exists():
         for test_db in db_dir.glob("test_*.db"):

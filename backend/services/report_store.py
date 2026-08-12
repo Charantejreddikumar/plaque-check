@@ -9,75 +9,14 @@ from services.db import get_db_connection
 
 
 def init_database() -> None:
-    with get_db_connection("reports.db") as (db_type, conn):
-        cursor = conn.cursor()
-        if db_type == "postgres":
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS reports (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    image_path TEXT NOT NULL,
-                    processed_image TEXT NOT NULL,
-                    plaque_percent INTEGER NOT NULL,
-                    severity TEXT NOT NULL,
-                    confidence REAL NOT NULL,
-                    recommendation TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
-                    doctor_id INTEGER,
-                    review_status TEXT DEFAULT 'pending_review',
-                    doctor_notes TEXT,
-                    treatment_recommendations TEXT,
-                    follow_up_date TEXT,
-                    reviewed_at TEXT
-                )
-                """
-            )
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id)")
-        else:
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS reports (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    image_path TEXT NOT NULL,
-                    processed_image TEXT NOT NULL,
-                    plaque_percent INTEGER NOT NULL,
-                    severity TEXT NOT NULL,
-                    confidence REAL NOT NULL,
-                    recommendation TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
-                    doctor_id INTEGER,
-                    review_status TEXT DEFAULT 'pending_review',
-                    doctor_notes TEXT,
-                    treatment_recommendations TEXT,
-                    follow_up_date TEXT,
-                    reviewed_at TEXT
-                )
-                """
-            )
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id)")
-
-        # Migration columns check
-        columns_to_add = [
-            ("doctor_id", "INTEGER"),
-            ("review_status", "TEXT DEFAULT 'pending_review'"),
-            ("doctor_notes", "TEXT"),
-            ("treatment_recommendations", "TEXT"),
-            ("follow_up_date", "TEXT"),
-            ("reviewed_at", "TEXT"),
-        ]
-        for col_name, col_type in columns_to_add:
-            try:
-                cursor.execute(f"ALTER TABLE reports ADD COLUMN {col_name} {col_type}")
-            except Exception:
-                pass
+    from database import init_all_tables
+    init_all_tables()
 
 
 def save_report(user_id: int, prediction: dict) -> dict:
     init_database()
     timestamp = datetime.now(timezone.utc).isoformat()
-    with get_db_connection("reports.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         cursor = conn.cursor()
         if db_type == "postgres":
             cursor.execute(
@@ -148,7 +87,7 @@ def save_report(user_id: int, prediction: dict) -> dict:
 
 def list_reports(user_id: int) -> list[dict]:
     init_database()
-    with get_db_connection("reports.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
@@ -208,7 +147,7 @@ def list_reports(user_id: int) -> list[dict]:
 
 def get_report_by_id(report_id: int) -> dict | None:
     init_database()
-    with get_db_connection("reports.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT * FROM reports WHERE id = %s", (report_id,))
@@ -222,7 +161,7 @@ def get_report_by_id(report_id: int) -> dict | None:
 
 def list_pending_reports() -> list[dict]:
     init_database()
-    with get_db_connection("reports.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
@@ -240,7 +179,7 @@ def list_pending_reports() -> list[dict]:
 
 def list_all_reports() -> list[dict]:
     init_database()
-    with get_db_connection("reports.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         if db_type == "postgres":
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT * FROM reports ORDER BY timestamp DESC")
@@ -263,7 +202,7 @@ def review_report(
 ) -> dict | None:
     init_database()
     reviewed_at = datetime.now(timezone.utc).isoformat()
-    with get_db_connection("reports.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         cursor = conn.cursor()
         report = get_report_by_id(report_id)
         if not report:

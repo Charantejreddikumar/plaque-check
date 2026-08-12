@@ -65,6 +65,7 @@ def run_supabase_migration():
 
     # Set environment variable so services/db.py uses this connection
     os.environ["SUPABASE_DATABASE_URL"] = url
+    os.environ["USE_SUPABASE"] = "true"
 
     try:
         conn = psycopg2.connect(url, connect_timeout=15)

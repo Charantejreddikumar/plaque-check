@@ -100,7 +100,7 @@ def register(payload: RegisterRequest) -> dict:
         logger.exception("Registration failed for %s.", email)
         raise HTTPException(
             status_code=500,
-            detail="Registration failed. Please try again.",
+            detail=f"Registration failed: {str(exc)}",
         ) from exc
 
     logger.info("[AUTH SUCCESS] Patient registration success for email: %s (User ID: %s)", email, user["id"])
@@ -147,7 +147,8 @@ def register_doctor(payload: DoctorRegisterRequest) -> dict:
         err_str = str(exc).lower()
         if "unique" in err_str or "duplicate" in err_str:
             raise HTTPException(status_code=400, detail="Email already registered") from exc
-        raise HTTPException(status_code=500, detail="Doctor registration failed.") from exc
+        logger.exception("Doctor registration failed for %s.", email)
+        raise HTTPException(status_code=500, detail=f"Doctor registration failed: {str(exc)}") from exc
 
     logger.info("[AUTH SUCCESS] Doctor registration submitted for email: %s (User ID: %s, Pending Approval)", email, user["id"])
     return {

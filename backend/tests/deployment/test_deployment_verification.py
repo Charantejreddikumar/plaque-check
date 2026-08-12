@@ -30,12 +30,12 @@ def test_deployment_route_accessibility(route):
 @pytest.mark.parametrize("i", range(1, 51))
 def test_deployment_database_connection(i):
     # Verify DB connection can execute SELECT 1
-    with get_db_connection("users.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         cursor = conn.cursor()
         res = cursor.execute("SELECT 1").fetchone()
         assert res[0] == 1
 
-    with get_db_connection("plaquecheck.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         cursor = conn.cursor()
         res = cursor.execute("SELECT 1").fetchone()
         assert res[0] == 1

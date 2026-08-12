@@ -183,13 +183,11 @@ def update_patient_status(
     if status == "deactivated":
         deactivate_user(user_id)
     else:
-        with get_db_connection("users.db") as (db_type, conn):
+        with get_db_connection() as (db_type, conn):
             cursor = conn.cursor()
             if db_type == "postgres":
-                cursor.execute("UPDATE users SET status = 'active' WHERE id = %s", (user_id,))
                 cursor.execute("UPDATE patient_users SET status = 'active' WHERE id = %s", (user_id,))
             else:
-                cursor.execute("UPDATE users SET status = 'active' WHERE id = ?", (user_id,))
                 cursor.execute("UPDATE patient_users SET status = 'active' WHERE id = ?", (user_id,))
 
     log_audit_event(
@@ -207,16 +205,16 @@ def reset_patient_password(
     user: dict = Depends(require_role(["administrator"])),
 ) -> dict:
     hashed = pwd_context.hash(req.new_password)
-    with get_db_connection("users.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         cursor = conn.cursor()
         if db_type == "postgres":
-            cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hashed, user_id))
             cursor.execute("UPDATE patient_users SET password_hash = %s WHERE id = %s", (hashed, user_id))
             cursor.execute("UPDATE doctor_users SET password_hash = %s WHERE id = %s", (hashed, user_id))
+            cursor.execute("UPDATE admin_users SET password_hash = %s WHERE id = %s", (hashed, user_id))
         else:
-            cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hashed, user_id))
             cursor.execute("UPDATE patient_users SET password_hash = ? WHERE id = ?", (hashed, user_id))
             cursor.execute("UPDATE doctor_users SET password_hash = ? WHERE id = ?", (hashed, user_id))
+            cursor.execute("UPDATE admin_users SET password_hash = ? WHERE id = ?", (hashed, user_id))
 
     log_audit_event(
         user_id=user["id"],
@@ -246,12 +244,17 @@ def get_doctors_list(
     user: dict = Depends(require_role(["administrator"])),
 ) -> list[dict]:
     doctors = list_doctors()
+    all_reports = list_all_reports()
     results = []
     for d in doctors:
         d_copy = dict(d)
+        doc_uid = d_copy.get("user_id")
+        doc_reports = [r for r in all_reports if r.get("doctor_id") == doc_uid]
+        assigned_patients = len(set(r.get("user_id") for r in doc_reports if r.get("user_id")))
+        
         d_copy["experience"] = "8 Years"
-        d_copy["patients_assigned"] = 24
-        d_copy["reports_reviewed"] = 142
+        d_copy["patients_assigned"] = assigned_patients
+        d_copy["reports_reviewed"] = len(doc_reports)
         d_copy["average_review_time"] = "1.8 hours"
         d_copy["photo"] = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150"
         
@@ -281,6 +284,20 @@ def approve_doctor_account(
         details=f"Admin approved doctor user #{user_id}",
     )
     return {"success": True, "message": f"Doctor account #{user_id} approved successfully."}
+
+
+@router.post("/doctors/{user_id}/deactivate")
+def deactivate_doctor_account(
+    user_id: int,
+    user: dict = Depends(require_role(["administrator"])),
+) -> dict:
+    deactivate_user(user_id)
+    log_audit_event(
+        user_id=user["id"],
+        action="ADMIN_DEACTIVATE_DOCTOR",
+        details=f"Admin deactivated doctor user #{user_id}",
+    )
+    return {"success": True, "message": f"Doctor account #{user_id} deactivated."}
 
 
 @router.post("/doctors/{user_id}/reject")

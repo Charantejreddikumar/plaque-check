@@ -18,6 +18,7 @@ from routes.reports import router as reports_router
 from routes.doctor import router as doctor_router
 from routes.admin import router as admin_router
 from routes.notifications import router as notifications_router
+from database import init_all_tables, migrate_legacy_databases
 from services.report_store import init_database
 from services.user_store import init_user_database
 from utils.logging_config import configure_logging
@@ -121,9 +122,10 @@ app.include_router(notifications_router)
 
 @app.on_event("startup")
 def startup() -> None:
-    init_database()
+    init_all_tables()
+    migrate_legacy_databases()
     init_user_database(force=True)
-    logger.info("PlaqueCheck backend started.")
+    logger.info("PlaqueCheck backend started with single SQLite database plaquecheck.db.")
 
 
 @app.get("/")

@@ -39,25 +39,25 @@ def test_user_and_session_db_operations():
 def test_role_stamped_session_resolves_login_role_when_role_tables_collide():
     init_user_database(force=True)
     password_hash = pwd_context.hash("password123")
-    with get_db_connection("users.db") as (db_type, conn):
+    with get_db_connection() as (db_type, conn):
         cursor = conn.cursor()
         if db_type == "postgres":
-            cursor.execute("SELECT COALESCE(MAX(id), 0) + 1000 FROM users")
+            cursor.execute("SELECT COALESCE(MAX(id), 0) + 1000 FROM patient_users")
             user_id = cursor.fetchone()[0]
             cursor.execute(
-                "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (%s, %s, %s, %s, 'patient', 'active', %s)",
-                (user_id, "Patient Collision", f"patient_collision_{user_id}@example.com", password_hash, "2026-01-01T00:00:00+00:00"),
+                "INSERT INTO patient_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, 'active', %s, %s)",
+                (user_id, "Patient Collision", f"patient_collision_{user_id}@example.com", password_hash, "2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00"),
             )
             cursor.execute(
                 "INSERT INTO doctor_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (%s, %s, %s, %s, 'active', %s, %s)",
                 (user_id, "Doctor Collision", f"doctor_collision_{user_id}@example.com", password_hash, "2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00"),
             )
         else:
-            cursor.execute("SELECT COALESCE(MAX(id), 0) + 1000 FROM users")
+            cursor.execute("SELECT COALESCE(MAX(id), 0) + 1000 FROM patient_users")
             user_id = cursor.fetchone()[0]
             cursor.execute(
-                "INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, 'patient', 'active', ?)",
-                (user_id, "Patient Collision", f"patient_collision_{user_id}@example.com", password_hash, "2026-01-01T00:00:00+00:00"),
+                "INSERT INTO patient_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)",
+                (user_id, "Patient Collision", f"patient_collision_{user_id}@example.com", password_hash, "2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00"),
             )
             cursor.execute(
                 "INSERT INTO doctor_users (id, name, email, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)",
