@@ -75,6 +75,14 @@ async def predict(
     saved_path.write_bytes(contents)
     logger.info("Uploaded image saved: %s.", saved_path.name)
 
+    # Push to Supabase Storage if configured
+    try:
+        from services.storage import upload_image_to_storage
+        storage_url = upload_image_to_storage(contents, f"user_{user['id']}_{saved_path.name}", content_type=content_type)
+        logger.info("[STORAGE] Image available at: %s", storage_url)
+    except Exception as st_exc:
+        logger.warning("[STORAGE WARNING] Storage upload skipped: %s", st_exc)
+
     try:
         prediction = analyze_image(saved_path)
         store_dataset_sample(saved_path, prediction["processed_image"])
