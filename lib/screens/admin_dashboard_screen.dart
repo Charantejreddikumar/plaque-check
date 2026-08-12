@@ -759,44 +759,60 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _showAssignDoctorDialog(int patientId) {
-    int selectedDocId = 1;
+    if (_doctors.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No doctor accounts registered in system.')),
+      );
+      return;
+    }
+    int selectedDocId = (_doctors.first['user_id'] as num?)?.toInt() ?? 1;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Assign Primary Care Doctor', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Select doctor for patient assignment:', style: TextStyle(color: Colors.white70)),
-            const SizedBox(height: 12),
-            DropdownButton<int>(
-              value: selectedDocId,
-              dropdownColor: const Color(0xFF1E293B),
-              style: const TextStyle(color: Colors.white),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('Dr. Sarah Jenkins (Periodontics)')),
-                DropdownMenuItem(value: 2, child: Text('Dr. Michael Chen (Orthodontics)')),
-              ],
-              onChanged: (val) {
-                if (val != null) selectedDocId = val;
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: const Text('Assign Primary Care Doctor', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select doctor for patient assignment:', style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 12),
+              DropdownButton<int>(
+                value: selectedDocId,
+                dropdownColor: const Color(0xFF1E293B),
+                style: const TextStyle(color: Colors.white),
+                items: _doctors.map<DropdownMenuItem<int>>((d) {
+                  final uid = (d['user_id'] as num?)?.toInt() ?? 1;
+                  final name = d['name'] ?? 'Doctor #$uid';
+                  final spec = d['specialization'] ?? 'General Dentistry';
+                  return DropdownMenuItem<int>(
+                    value: uid,
+                    child: Text('$name ($spec)'),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setDialogState(() => selectedDocId = val);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.white60))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF805AD5)),
+              onPressed: () async {
+                await _apiService.assignDoctorToPatient(patientId, selectedDocId);
+                if (!mounted) return;
+                Navigator.pop(ctx);
+                _loadAllAdminData();
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Doctor assigned successfully!')));
               },
+              child: const Text('Assign', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.white60))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF805AD5)),
-            onPressed: () async {
-              await _apiService.assignDoctorToPatient(patientId, selectedDocId);
-              if (!mounted) return;
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Doctor assigned successfully!')));
-            },
-            child: const Text('Assign', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
