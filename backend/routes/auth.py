@@ -232,9 +232,12 @@ def doctor_login(payload: LoginRequest) -> dict:
         logger.warning("[AUTH FAILURE] Doctor login failed: Invalid password for email %s", email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if user["status"] == "deactivated":
-        logger.warning("[AUTH FAILURE] Doctor login rejected: Account %s is deactivated", email)
-        raise HTTPException(status_code=403, detail="Account deactivated. Please contact Administrator.")
+    if user["status"] in ("deactivated", "rejected"):
+        logger.warning("[AUTH FAILURE] Doctor login rejected: Account %s is %s", email, user["status"])
+        raise HTTPException(
+            status_code=403,
+            detail=f"Your Doctor account registration was {user['status']}. Please contact Administrator.",
+        )
 
     if user["status"] == "pending_approval":
         logger.warning("[AUTH FAILURE] Doctor login rejected: Account %s is pending administrator approval", email)

@@ -511,6 +511,19 @@ def approve_doctor(user_id: int) -> bool:
     return True
 
 
+def reject_doctor(user_id: int) -> bool:
+    init_user_database()
+    with get_db_connection() as (db_type, conn):
+        cursor = conn.cursor()
+        if db_type == "postgres":
+            cursor.execute("UPDATE doctor_users SET status = 'rejected' WHERE id = %s", (user_id,))
+            cursor.execute("UPDATE doctors SET approval_status = 'rejected' WHERE user_id = %s", (user_id,))
+        else:
+            cursor.execute("UPDATE doctor_users SET status = 'rejected' WHERE id = ?", (user_id,))
+            cursor.execute("UPDATE doctors SET approval_status = 'rejected' WHERE user_id = ?", (user_id,))
+    return True
+
+
 def deactivate_user(user_id: int) -> bool:
     init_user_database()
     with get_db_connection() as (db_type, conn):

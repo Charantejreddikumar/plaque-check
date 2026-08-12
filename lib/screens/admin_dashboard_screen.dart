@@ -53,6 +53,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // Filter & Search states
   String _patientSearchQuery = '';
   String _patientFilter = 'all';
+  String _doctorFilter = 'all';
   final String _doctorSearchQuery = '';
   final String _reportFilter = 'all';
   final String _reportSearchQuery = '';
@@ -819,13 +820,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ================= 3. DOCTOR MANAGEMENT =================
   Widget _buildDoctorManagementSection() {
+    final pendingDocs = _doctors.where((d) => d['approval_status'] == 'pending_approval' || d['status'] == 'pending_approval').toList();
+    final approvedDocs = _doctors.where((d) => d['approval_status'] == 'approved' || d['status'] == 'active').toList();
+
+    List<dynamic> displayedDocs = _doctors;
+    if (_doctorFilter == 'pending') {
+      displayedDocs = pendingDocs;
+    } else if (_doctorFilter == 'approved') {
+      displayedDocs = approvedDocs;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Doctor Management & Credentialing', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Doctor Management & Requests', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('Review pending doctor registrations, approve credentials, or manage active accounts.', style: TextStyle(color: Colors.white60, fontSize: 12)),
+              ],
+            ),
             ElevatedButton.icon(
               onPressed: () => _triggerExport('doctors'),
               icon: const Icon(Icons.download, size: 16, color: Colors.white),
@@ -835,83 +852,172 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        if (_doctors.isEmpty)
-          const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No doctor accounts registered.', style: TextStyle(color: Colors.white70))))
+        // Filter Chips
+        Row(
+          children: [
+            ChoiceChip(
+              label: Text('All Doctors (${_doctors.length})'),
+              selected: _doctorFilter == 'all',
+              onSelected: (val) {
+                if (val) setState(() => _doctorFilter = 'all');
+              },
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text('Pending Requests (${pendingDocs.length})'),
+              selected: _doctorFilter == 'pending',
+              selectedColor: Colors.orangeAccent.withValues(alpha: 0.3),
+              onSelected: (val) {
+                if (val) setState(() => _doctorFilter = 'pending');
+              },
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text('Approved Doctors (${approvedDocs.length})'),
+              selected: _doctorFilter == 'approved',
+              selectedColor: Colors.greenAccent.withValues(alpha: 0.3),
+              onSelected: (val) {
+                if (val) setState(() => _doctorFilter = 'approved');
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (displayedDocs.isEmpty)
+          GlassCard(
+            borderRadius: 20,
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Text(
+                  _doctorFilter == 'pending'
+                      ? 'No pending doctor registration requests at this time.'
+                      : 'No doctor accounts found.',
+                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          )
         else
-          ..._doctors.map((d) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: GlassCard(
-                  borderRadius: 20,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundImage: NetworkImage(d['photo']),
+          ...displayedDocs.map((d) {
+            final isPending = d['approval_status'] == 'pending_approval' || d['status'] == 'pending_approval';
+            final isRejected = d['approval_status'] == 'rejected' || d['status'] == 'rejected';
+            final statusText = isPending ? 'PENDING APPROVAL' : (isRejected ? 'REJECTED' : 'APPROVED');
+            final statusColor = isPending ? Colors.orangeAccent : (isRejected ? Colors.redAccent : Colors.greenAccent);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: GlassCard(
+                borderRadius: 20,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: const Color(0xFF805AD5).withValues(alpha: 0.3),
+                            child: Text(
+                              d['name']?[0] ?? 'D',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(d['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                                  Text('${d["qualification"]} • ${d["specialization"]} • Reg: ${d["registration_number"]}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                                  Text('${d["clinic_name"]} (${d["hospital_name"]})', style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: d['approval_status'] == 'approved' ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                d['approval_status'].toString().toUpperCase(),
-                                style: TextStyle(color: d['approval_status'] == 'approved' ? Colors.greenAccent : Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Assigned: ${d["patients_assigned"]} pts | Reviewed: ${d["reports_reviewed"]} rpts | Avg Time: ${d["average_review_time"]}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                            Row(
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (d['approval_status'] != 'approved')
-                                  ElevatedButton.icon(
-                                    onPressed: () async {
-                                      await _apiService.approveDoctor(d['user_id']);
-                                      _loadAllAdminData();
-                                    },
-                                    icon: const Icon(Icons.check, size: 14, color: Colors.white),
-                                    label: const Text('Approve', style: TextStyle(color: Colors.white, fontSize: 12)),
-                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2B7A78)),
-                                  ),
+                                Text(d['name'] ?? 'Doctor', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text('Email: ${d["email"]} • ID: #${d["user_id"]}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                Text('${d["qualification"] ?? "N/A"} • ${d["specialization"] ?? "N/A"} • Reg No: ${d["registration_number"] ?? "N/A"}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                                Text('Clinic: ${d["clinic_name"] ?? "N/A"} (${d["hospital_name"] ?? "N/A"})', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                            ),
+                            child: Text(
+                              statusText,
+                              style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Assigned: ${d["patients_assigned"] ?? 0} pts | Reviewed: ${d["reports_reviewed"] ?? 0} rpts',
+                            style: const TextStyle(color: Colors.white60, fontSize: 11),
+                          ),
+                          Row(
+                            children: [
+                              if (isPending) ...[
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    await _apiService.approveDoctor(d['user_id']);
+                                    if (!mounted) return;
+                                    _loadAllAdminData();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: const Color(0xFF2B7A78),
+                                        content: Text('Doctor ${d["name"]} request ACCEPTED and account activated!'),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.check, size: 14, color: Colors.white),
+                                  label: const Text('Accept', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2B7A78)),
+                                ),
                                 const SizedBox(width: 8),
                                 OutlinedButton.icon(
                                   onPressed: () async {
-                                    await _apiService.suspendDoctor(d['user_id']);
+                                    await _apiService.rejectDoctor(d['user_id']);
+                                    if (!mounted) return;
                                     _loadAllAdminData();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: Colors.redAccent,
+                                        content: Text('Doctor ${d["name"]} request REJECTED.'),
+                                      ),
+                                    );
                                   },
-                                  icon: const Icon(Icons.block, size: 14, color: Colors.redAccent),
-                                  label: const Text('Suspend', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                                  icon: const Icon(Icons.close, size: 14, color: Colors.redAccent),
+                                  label: const Text('Reject', style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                                ),
+                              ] else if (!isRejected) ...[
+                                OutlinedButton.icon(
+                                  onPressed: () async {
+                                    await _apiService.deactivateDoctor(d['user_id']);
+                                    if (!mounted) return;
+                                    _loadAllAdminData();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Doctor ${d["name"]} account deactivated.')),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.block, size: 14, color: Colors.orangeAccent),
+                                  label: const Text('Deactivate', style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
                                 ),
                               ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              )),
+              ),
+            );
+          }),
       ],
     );
   }

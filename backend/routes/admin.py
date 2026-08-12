@@ -11,6 +11,7 @@ from services.auth_context import require_role
 from services.report_store import list_all_reports, get_report_by_id
 from services.user_store import (
     approve_doctor,
+    reject_doctor,
     create_notification,
     deactivate_user,
     get_audit_logs,
@@ -267,6 +268,7 @@ def get_doctors_list(
 
 
 @router.post("/doctors/{user_id}/approve")
+@router.post("/doctor-requests/{user_id}/approve")
 def approve_doctor_account(
     user_id: int,
     user: dict = Depends(require_role(["administrator"])),
@@ -300,12 +302,21 @@ def deactivate_doctor_account(
     return {"success": True, "message": f"Doctor account #{user_id} deactivated."}
 
 
+@router.get("/doctor-requests")
+def get_pending_doctor_requests(
+    user: dict = Depends(require_role(["administrator"])),
+) -> list[dict]:
+    doctors = list_doctors()
+    return [d for d in doctors if d.get("approval_status") == "pending_approval" or d.get("status") == "pending_approval"]
+
+
 @router.post("/doctors/{user_id}/reject")
+@router.post("/doctor-requests/{user_id}/reject")
 def reject_doctor_account(
     user_id: int,
     user: dict = Depends(require_role(["administrator"])),
 ) -> dict:
-    deactivate_user(user_id)
+    reject_doctor(user_id)
     log_audit_event(
         user_id=user["id"],
         action="ADMIN_REJECT_DOCTOR",

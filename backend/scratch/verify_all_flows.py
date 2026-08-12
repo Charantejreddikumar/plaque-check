@@ -93,8 +93,8 @@ def run_all_tests():
     patient_headers = {"Authorization": f"Bearer {patient_token}"}
     print("   [OK] Patient re-login successful.")
     
-    # 9. Register Doctor
-    print("9. Registering new doctor...")
+    # 9. Register Doctor & Test Pending Restriction
+    print("9. Registering new doctor & testing pending login restriction...")
     doc_email = f"newdoctor_{run_id}@plaquecheck.com"
     doc_pass = "doctorpass123"
     doc_payload = {
@@ -110,26 +110,43 @@ def run_all_tests():
     }
     res = client.post("/register/doctor", json=doc_payload)
     assert res.status_code == 200, f"Doctor registration failed: {res.text}"
+    assert "pending" in res.json()["message"].lower()
     print("   [OK] Doctor registration submitted (pending approval).")
+
+    # Verify Pending Doctor Login Denied
+    res = client.post("/doctor/login", json={"email": doc_email, "password": doc_pass})
+    assert res.status_code == 403, f"Pending doctor login should be denied 403: {res.text}"
+    print("   [OK] Pending Doctor login correctly rejected (403 Forbidden).")
     
     # 10. Login Admin & Approve Doctor
-    print("10. Logging in Admin & approving doctor...")
+    print("10. Logging in Admin & inspecting doctor requests...")
     res = client.post("/admin/login", json={"email": "admin@plaquecheck.com", "password": "password123"})
     assert res.status_code == 200, f"Admin login failed: {res.text}"
     admin_token = res.json()["access_token"]
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
     
-    # Find doctor user id
-    res = client.get("/admin/doctors", headers=admin_headers)
+    # Find pending doctor requests
+    res = client.get("/admin/doctor-requests", headers=admin_headers)
     assert res.status_code == 200
-    doctors = res.json()
-    doc_user = next(d for d in doctors if d["email"] == doc_email)
-    doc_user_id = doc_user["user_id"]
+    pending_reqs = res.json()
+    doc_req = next(d for d in pending_reqs if d["email"] == doc_email)
+    doc_user_id = doc_req["user_id"]
     
-    # Approve doctor
-    res = client.post(f"/admin/doctors/{doc_user_id}/approve", headers=admin_headers)
+    # Approve doctor via /admin/doctor-requests/{id}/approve
+    res = client.post(f"/admin/doctor-requests/{doc_user_id}/approve", headers=admin_headers)
     assert res.status_code == 200, f"Doctor approval failed: {res.text}"
-    print(f"   [OK] Doctor user #{doc_user_id} approved by Admin.")
+    print(f"   [OK] Doctor request for user #{doc_user_id} ACCEPTED by Admin.")
+
+    # Test Rejecting Second Doctor Request
+    rej_doc_email = f"rejdoctor_{run_id}@plaquecheck.com"
+    client.post("/register/doctor", json={**doc_payload, "email": rej_doc_email})
+    res = client.get("/admin/doctor-requests", headers=admin_headers)
+    rej_req = next(d for d in res.json() if d["email"] == rej_doc_email)
+    res = client.post(f"/admin/doctor-requests/{rej_req['user_id']}/reject", headers=admin_headers)
+    assert res.status_code == 200
+    res = client.post("/doctor/login", json={"email": rej_doc_email, "password": doc_pass})
+    assert res.status_code == 403, "Rejected doctor login should be 403"
+    print("   [OK] Rejected Doctor request correctly handled (REJECTED status & 403 login block).")
     
     # 11. Login Approved Doctor
     print("11. Logging in approved Doctor...")
@@ -137,7 +154,7 @@ def run_all_tests():
     assert res.status_code == 200, f"Doctor login failed: {res.text}"
     doc_token = res.json()["access_token"]
     doc_headers = {"Authorization": f"Bearer {doc_token}"}
-    print("   [OK] Doctor logged in successfully.")
+    print("   [OK] Approved Doctor logged in successfully.")
     
     # 12. Doctor Dashboard & Pending Reports
     print("12. Verifying Doctor Dashboard & Report Access...")
